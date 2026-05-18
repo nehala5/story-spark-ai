@@ -35,11 +35,10 @@ import AboutUsComponent from "./components/footer/about-us.tsx";
 import CareerComponent from "./components/footer/career.tsx";
 import ContactUsComponent from "./components/footer/contact-us.tsx";
 import BlogComponent from "./components/footer/blog.tsx";
-import FooterHelpCenterComponent from "./components/footer/help-center.tsx";
+// import HelpCenterComponent from "./components/footer/help-center.tsx";
 import GuidelinesComponent from "./components/footer/guidelines.tsx";
 import TemplatesComponent from "./components/templates/templates.component";
 import CommunityComponent from "./components/community/community.component";
-
 const ProtectedRoute = ({
   element,
   allowedRoles,
@@ -48,21 +47,18 @@ const ProtectedRoute = ({
   allowedRoles: string[];
 }) => {
   const user = getUserInfo();
-
   if (!user) {
     return <Navigate to="/login" />;
   }
-
   if (!allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
-
   return element;
 };
 
 function App() {
-  const [darkMode /*, setDarkMode */] = useState(
-    localStorage.getItem("theme") === "dark"
+  const [darkMode, setDarkMode] = useState(
+    localStorage.getItem("theme") === "dark",
   );
 
   useEffect(() => {
@@ -77,6 +73,16 @@ function App() {
 
   return (
     <Router>
+      {/* Dark Mode Toggle Button */}
+      {/* <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="px-4 py-2 rounded-md bg-black text-white dark:bg-white dark:text-black transition-colors duration-300 shadow-md"
+        >
+          {darkMode ? "☀️ Light" : "🌙 Dark"}
+        </button>
+      </div> */}
+
       <Routes>
         <Route
           path="/"
@@ -87,7 +93,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/templates"
           element={
@@ -96,7 +101,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/writing-assistant"
           element={
@@ -105,7 +109,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/dashboard"
           element={
@@ -139,20 +142,7 @@ function App() {
               />
             }
           />
-        <Route
-          path="analytics"
-          element={
-            <ProtectedRoute
-              element={<div className="text-white p-5 text-2xl">Analytics Dashboard</div>}
-              allowedRoles={[
-                USER_ROLE.USER,
-                USER_ROLE.ADMIN,
-                USER_ROLE.SUPER_ADMIN,
-                USER_ROLE.WRITER,
-         ]}
-        />
-      }
-      />
+
           <Route
             path="settings"
             element={
@@ -234,7 +224,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/login"
           element={
@@ -257,7 +246,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/pricing"
           element={
@@ -266,7 +254,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/explore"
           element={
@@ -275,7 +262,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/help"
           element={
@@ -284,7 +270,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/bookmarks"
           element={
@@ -303,7 +288,6 @@ function App() {
             />
           }
         />
-
         <Route
           path="/community"
           element={
@@ -321,7 +305,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/about-us"
           element={
@@ -330,7 +313,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/career"
           element={
@@ -339,7 +321,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/contact-us"
           element={
@@ -348,7 +329,6 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/blog"
           element={
@@ -357,16 +337,14 @@ function App() {
             </RootLayout>
           }
         />
-
         <Route
           path="/help-center"
           element={
             <RootLayout>
-              <FooterHelpCenterComponent />
+              <HelpCenterComponent />
             </RootLayout>
           }
         />
-
         <Route
           path="/guidelines"
           element={
@@ -375,7 +353,14 @@ function App() {
             </RootLayout>
           }
         />
-
+        <Route
+          path="/community"
+          element={
+            <RootLayout>
+              <CommunityComponent />
+            </RootLayout>
+          }
+        />
         <Route
           path="*"
           element={
@@ -388,5 +373,4 @@ function App() {
     </Router>
   );
 }
-
 export default App;
