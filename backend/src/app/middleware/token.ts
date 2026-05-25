@@ -15,7 +15,7 @@ export const getToken = async (req: Request): Promise<ITokenPayload> => {
     );
   }
   try {
-    const verifiedUser = await JwtHalers.verifyToken(
+    const verifiedUser = JwtHalers.verifyToken(
       token,
       config.jwt.secret as Secret
     );
