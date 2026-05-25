@@ -223,9 +223,18 @@ if (!email || !emailRegex.test(email)) {
             <span className="italic text-slate-400/60">Crafted for storytellers</span>
           </div>
           <div className="flex items-center gap-2.5">
-            {["Privacy", "Terms", "Cookies"].map((item, i, arr) => (
-              <span key={item} className="flex items-center gap-2.5">
-                <a href="#" className="text-slate-400/80 transition-colors duration-200 hover:text-blue-300">{item}</a>
+            {[
+              { label: "Privacy", path: "/privacy-policy" },
+              { label: "Terms", path: "/terms" },
+              { label: "Cookies", path: "/privacy-policy" },
+            ].map((item, i, arr) => (
+              <span key={item.label} className="flex items-center gap-2.5">
+                <Link
+                  to={item.path}
+                  className="text-slate-400/80 transition-colors duration-200 hover:text-blue-300"
+                >
+                  {item.label}
+                </Link>
                 {i < arr.length - 1 && <span className="text-white/[0.12]">|</span>}
               </span>
             ))}

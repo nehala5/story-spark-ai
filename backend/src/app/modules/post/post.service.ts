@@ -183,8 +183,12 @@ const getSinglePost = async (id: string) => {
   return postById;
 };
 
-const getPostsByTag = async (tag: string) => {
-  const result = await Post.find({ tag })
+const getPostsByTag = async (tag: string, excludeId?: string) => {
+  const query: any = { tag };
+  if (excludeId) {
+    query._id = { $ne: excludeId };
+  }
+  const result = await Post.find(query)
     .limit(2)
     .populate("author", "name email createdAt")
     .populate({

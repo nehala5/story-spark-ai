@@ -5,20 +5,20 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Create Account | Story Spark AI</title>
     <meta name="description" content="Sign in or create an account for Story Spark AI — turn your imagination into fully illustrated multi-variation AI stories."/>
-    
+
     <!-- Tailwind CSS (w/ Form & Container plugins) -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    
+
     <!-- Google Fonts & Material Symbols Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    
+
     <!-- Google Identity Services (GIS) library for Google Auth -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    
+
     <!-- Shared Auth Design System CSS -->
     <link href="auth.css" rel="stylesheet"/>
-    
+
     <!-- Dynamic Tailwind config containing the app's style tokens -->
     <script id="tailwind-config">
         tailwind.config = {
@@ -95,14 +95,14 @@
 <body class="bg-background text-on-surface font-body-md min-h-screen selection:bg-primary/30">
 <div class="min-h-screen flex items-center justify-center">
 <main class="auth-container flex flex-col md:flex-row overflow-hidden md:rounded-2xl">
-    
+
     <!-- Left Pane: Concept Showcase -->
     <section class="relative w-full md:w-1/2 flex items-center justify-center p-6 md:p-8 overflow-hidden bg-surface-container-lowest left-pane-mobile">
         <!-- Animated Particle Canvas -->
         <canvas id="particle-canvas"></canvas>
         <div class="left-pane-overlay"></div>
         <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-tertiary/5 z-0"></div>
-        
+
         <div class="relative z-10 max-w-lg">
             <div class="mb-8">
                 <h1 class="font-display-lg mb-4 leading-tight text-display-lg-mobile md:text-display-lg">
@@ -115,7 +115,7 @@
             </div>
         </div>
     </section>
-    
+
     <!-- Right Pane: Auth Form -->
     <section class="w-full md:w-1/2 flex items-center justify-center p-4 md:p-8 bg-surface z-10">
         <div class="w-full max-w-[380px] glass-panel p-[24px] rounded-[20px] relative">
@@ -125,13 +125,13 @@
                     Story Spark AI
                 </div>
             </div>
-            
+
             <!-- Tab Switcher -->
             <div class="flex border-b border-white/10 mb-4 overflow-hidden">
                 <a href="login.html" class="flex-1 pb-3 font-label-caps text-label-caps text-on-surface-variant border-b-2 border-transparent hover:text-on-surface transition-all duration-300" id="tab-signin">SIGN IN</a>
                 <button class="flex-1 pb-3 font-label-caps text-label-caps text-primary border-b-2 border-primary transition-all duration-300" id="tab-signup" onclick="toggleAuthMode('signup')">CREATE ACCOUNT</button>
             </div>
-            
+
             <!-- Social Auth -->
             <div class="flex gap-3 mb-4">
                 <button onclick="handleGoogleSignIn()" type="button" class="flex-1 flex items-center justify-center gap-2 ds-btn-google glass-panel hover:bg-white/5 hover:-translate-y-0.5 transition-all duration-300 border border-white/10 group" id="google-btn">
@@ -144,7 +144,7 @@
                     <span class="text-[13px] font-semibold text-on-surface-variant group-hover:text-on-surface" id="google-btn-text">sign in with Google</span>
                 </button>
             </div>
-            
+
             <!-- Google Auth Status Banner -->
             <div id="google-auth-status" class="hidden mb-3 p-3 rounded-xl border border-primary/20 bg-primary/5 flex items-center gap-3">
                 <img id="google-user-avatar" class="w-8 h-8 rounded-full border border-white/10" src="" alt=""/>
@@ -154,13 +154,13 @@
                 </div>
                 <span class="material-symbols-outlined text-green-400 text-lg">check_circle</span>
             </div>
-            
+
             <div class="flex items-center gap-3 mb-4">
                 <div class="h-[1px] flex-1 bg-white/[0.08]"></div>
                 <span class="text-[11px] text-outline uppercase tracking-widest font-bold">Or use email</span>
                 <div class="h-[1px] flex-1 bg-white/[0.08]"></div>
             </div>
-            
+
             <!-- Auth Forms -->
             <form class="space-y-3" id="auth-form">
                 <div class="animate-in fade-in duration-500" id="signup-fields">
@@ -195,10 +195,10 @@
                     Create Account
                 </button>
             </form>
-            
+
             <p class="text-center mt-4 text-[13px] text-on-surface-variant">
-                By continuing, you agree to our 
-                <a class="underline hover:text-primary transition-colors cursor-pointer" onclick="openLegalModal('terms')">Terms of Service</a> and 
+                By continuing, you agree to our
+                <a class="underline hover:text-primary transition-colors cursor-pointer" onclick="openLegalModal('terms')">Terms of Service</a> and
                 <a class="underline hover:text-primary transition-colors cursor-pointer" onclick="openLegalModal('privacy')">Privacy Policy</a>.
             </p>
             <p class="text-center mt-4 text-[13px] text-on-surface-variant" id="nav-toggle">

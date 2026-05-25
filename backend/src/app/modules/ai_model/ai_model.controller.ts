@@ -32,7 +32,7 @@ const aiFreeModelGenerate = catchAsync(async (req: Request, res: Response) => {
     storyGenerationCounts[userId] = 0;
   }
   
-  if (storyGenerationCounts[userId] > 3) {
+  if (storyGenerationCounts[userId] >= 3) {
     return sendResponse(res, {
       statusCode: httpStatus.FORBIDDEN,
       success: false,
@@ -40,14 +40,22 @@ const aiFreeModelGenerate = catchAsync(async (req: Request, res: Response) => {
     });
   }
   
-  const result = await AiModelService.aiFreeModelGenerate(prompt);
+  // Atomic reservation in JS event loop
   storyGenerationCounts[userId] += 1;
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Story generated successfully!",
-    data: result,
-  });
+  
+  try {
+    const result = await AiModelService.aiFreeModelGenerate(prompt);
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Story generated successfully!",
+      data: result,
+    });
+  } catch (error) {
+    // Rollback quota
+    storyGenerationCounts[userId] = Math.max(0, storyGenerationCounts[userId] - 1);
+    throw error;
+  }
 });
 
 export const AiModelController = {
