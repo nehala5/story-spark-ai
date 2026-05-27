@@ -4,8 +4,9 @@ import catchAsync from "../../../shared/catch_async";
 import sendResponse from "../../../shared/send_response";
 import { AiModelService } from "./ai_model.service";
 import { getToken } from "../../middleware/token";
+import { FreeUsage } from "./free_usage.model";
 
-const storyGenerationCounts: { [key: string]: number } = {};
+const FREE_STORY_LIMIT = 3;
 
 const aiModelGenerate = catchAsync(async (req: Request, res: Response) => {
   const prompt = req.body;
@@ -21,27 +22,51 @@ const aiModelGenerate = catchAsync(async (req: Request, res: Response) => {
 
 const aiFreeModelGenerate = catchAsync(async (req: Request, res: Response) => {
   const prompt = req.body;
-  let userId = req.cookies.userId;
-  // If no cookie exists, generate a unique ID and set it in a cookie
-  if (!userId) {
-    userId = Math.random().toString(36).substring(7);
-    res.cookie("userId", userId, { maxAge: 30 * 24 * 60 * 60 * 1000 });
+
+  // Use IP address as identifier for persistent, non-spoofable tracking
+  const ip =
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+    req.socket.remoteAddress ||
+    "unknown";
+
+  const currentDate = new Date();
+  const firstDayOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1
+  );
+
+  // Find or create usage record for this IP
+  let usageRecord = await FreeUsage.findOne({ ip });
+
+  if (!usageRecord) {
+    usageRecord = await FreeUsage.create({
+      ip,
+      requestsThisMonth: 0,
+      lastRequestDate: currentDate,
+    });
   }
-  // Initialize or get the current count for the user
-  if (!storyGenerationCounts[userId]) {
-    storyGenerationCounts[userId] = 0;
+
+  // Reset count if last request was in a previous month
+  if (usageRecord.lastRequestDate && usageRecord.lastRequestDate < firstDayOfMonth) {
+    usageRecord.requestsThisMonth = 0;
+    usageRecord.lastRequestDate = currentDate;
   }
-  
-  if (storyGenerationCounts[userId] > 3) {
+
+  if (usageRecord.requestsThisMonth >= FREE_STORY_LIMIT) {
     return sendResponse(res, {
       statusCode: httpStatus.FORBIDDEN,
       success: false,
-      message: "You have reached the maximum limit of 3 story generations.",
+      message: `You have reached the maximum limit of ${FREE_STORY_LIMIT} free story generations per month.`,
     });
   }
-  
+
   const result = await AiModelService.aiFreeModelGenerate(prompt);
-  storyGenerationCounts[userId] += 1;
+
+  usageRecord.requestsThisMonth += 1;
+  usageRecord.lastRequestDate = currentDate;
+  await usageRecord.save();
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
