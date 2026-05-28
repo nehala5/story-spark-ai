@@ -310,7 +310,7 @@ const HelpSidebar = () => {
               key={section.id}
               type="button"
               onClick={() => scrollToSection(section.id)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 activeSection === section.id
                   ? "bg-indigo-50 text-indigo-700 border-l-2 border-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500"
                   : "text-slate-600 hover:text-slate-950 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/5"
@@ -334,7 +334,7 @@ const HelpSidebar = () => {
               key={section.id}
               type="button"
               onClick={() => scrollToSection(section.id)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                 activeSection === section.id
                   ? "bg-indigo-100 text-indigo-700 border border-indigo-300 dark:bg-indigo-500/30 dark:text-indigo-200 dark:border-indigo-500/40"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 dark:bg-white/5 dark:text-gray-400 dark:border-white/10 dark:hover:bg-white/10"
