@@ -172,6 +172,12 @@ const googleLogin = async (payload: { token: string }) => {
       throw new ApiError(httpStatus.BAD_REQUEST, "Invalid Google token");
     }
 
+    // Reject tokens whose email is not verified by Google to prevent account
+    // takeover via an unverified address the caller does not actually own.
+    if (!payload_data.email_verified) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "Google email is not verified");
+    }
+
     const { email, name: googleName, picture } = payload_data;
     let user = await User.findOne({ email });
 
