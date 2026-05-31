@@ -743,9 +743,9 @@ useEffect(() => {
           </h1>
 
           <div className="max-w-3xl mx-auto px-4 sm:px-0">
-            <div className="bg-gray-50 rounded-md p-4 border border-gray-200 text-slate-900 dark:bg-blue-500/10 dark:border-gray-400 dark:text-white">
-              <div className="relative">
-                <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+            <div className="bg-gray-50 rounded-md p-4 border border-gray-200 text-slate-900 dark:bg-blue-500/10 dark:border-gray-400 dark:text-white overflow-hidden">
+              <div className="relative w-full">
+                <form className="space-y-4 w-full" onSubmit={handleSubmit(onSubmit)}>
                   
                   {/* ── Genre chips ── */}
                   <div className="flex flex-wrap gap-2 mb-3">
@@ -838,14 +838,14 @@ useEffect(() => {
                   </div>
 
                   {/* ── Prompt textarea ── */}
-                  <div className="relative">
+                  <div className="relative w-full">
                     <textarea
                       {...register("prompt")}
                       ref={(el) => {
                         register("prompt").ref(el);
                         inputRef.current = el;
                       }}
-                      className={`w-full h-32 sm:h-40 resize-none border-none outline-none bg-transparent text-gray-800 dark:text-gray-200 focus:ring-0 text-lg leading-relaxed tracking-wide placeholder:italic placeholder:text-gray-500 dark:placeholder:text-gray-400 pr-10 transition-colors duration-200 ${
+                      className={`w-full h-32 sm:h-40 resize-none border-none outline-none bg-transparent text-gray-800 dark:text-gray-200 focus:ring-0 text-lg leading-relaxed tracking-wide placeholder:italic placeholder:text-gray-500 dark:placeholder:text-gray-400 pr-12 transition-colors duration-200 box-border ${
                         isOverLimit
                           ? "ring-1 ring-red-500 rounded"
                           : isNearLimit
