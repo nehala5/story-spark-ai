@@ -9,7 +9,8 @@ import {
   useVerifyOtpMutation,
 } from "../../redux/apis/otp.verify.api";
 import { useRegisterUserMutation } from "../../redux/apis/auth.api";
-import { useNavigate } from "react-router-dom";
+import { WandSparkles, BookOpen, UsersRound } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface IRegisterInfo {
   name: string;
@@ -84,6 +85,7 @@ const PASSWORD_REQUIREMENTS = [
 
 const SignUpComponent = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [emailVerify] = useEmailVerifyMutation();
   const [verifyOtp] = useVerifyOtpMutation();
   const [registerUser] = useRegisterUserMutation();
@@ -163,7 +165,6 @@ const SignUpComponent = () => {
             ?.message ||
           "Failed to send OTP. Check backend .env email credentials.";
         toast.error(message);
-        console.log("error: ", error);
       } finally {
         setIsBusy(false);
       }
@@ -200,7 +201,8 @@ const SignUpComponent = () => {
         if (res.data.accessToken) {
           toast.success("OTP validated successfully!");
           storeUserInfo({ accessToken: res.data.accessToken });
-          navigate("/");
+          const redirectPath = location.state && location.state.from ? location.state.from : "/";
+          navigate(redirectPath);
         }
       } else {
         throw new Error("No verification token received");
@@ -210,7 +212,6 @@ const SignUpComponent = () => {
         (err as { data?: Array<{ message?: string }> })?.data?.[0]?.message ||
         "OTP verification failed. Please check the code and try again.";
       toast.error(message);
-      console.log("error: ", err);
     } finally {
       setIsBusy(false);
     }
@@ -241,43 +242,97 @@ const SignUpComponent = () => {
         (error as { data?: Array<{ message?: string }> })?.data?.[0]
           ?.message || "Failed to resend OTP. Please try again.";
       toast.error(message);
-      console.log("resend error: ", error);
     } finally {
       setIsBusy(false);
     }
   };
 
   return (
-    <div className="min-h-[calc(100dvh-4.5rem)] bg-slate-900 text-slate-100 flex items-center justify-center relative overflow-hidden px-4 py-8">
+    <div className="min-h-[calc(100dvh-4.5rem)] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex items-center justify-center relative overflow-hidden px-4 py-8">
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="flex w-full max-w-md flex-col justify-center py-12 relative z-10">
+      <div className="flex w-full flex-col justify-center py-12 relative z-10">
         <div className="sm:mx-auto sm:w-full sm:max-w-md mb-8">
           <h2 className="text-center text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 drop-shadow-sm">
             STORY SPARK AI
           </h2>
         </div>
-
-        <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 sm:p-10 shadow-2xl">
-          <h3 className="text-center text-2xl font-bold tracking-tight text-slate-200">
+        <div className="flex justify-center items-center gap-40">
+        
+                <div className="flex flex-col gap-5">
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-700 bg-clip-text text-transparent">
+                    
+                    Turns Ideas into
+                    <br /> 
+                    unforgotable stories
+                    
+                    </h1>
+                  <p>AI powered storytelling that helps you
+                      <br />            
+                     create connect inspire.</p>
+        
+                     <div className="flex justify-center items-center gap-6 border border-gray-300 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-gray-400">
+                      <div>
+                        <WandSparkles className="text-violet-600"/>
+                      </div>
+                      <div>
+                        <h1 className="font-bold">Smart writing</h1>
+                        <p>AI that understands your ideas</p>
+                      </div>
+                     </div>
+        
+        
+                     <div className="flex justify-center items-center gap-6 border border-gray-300 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-gray-400">
+                      <div>
+                        <BookOpen className="text-violet-600"/>
+                      </div>
+                      <div>
+                        <h1 className="font-bold">Endless Creativity</h1>
+                        <p>Stories that captivate and inspire</p>
+                      </div>
+                     </div>
+        
+        
+                     <div className="flex justify-center items-center gap-6 border border-gray-300 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-gray-400">
+                      <div>
+                        <UsersRound className="text-violet-600"/>
+                      </div>
+                      <div>
+                        <h1 className="font-bold">Built for everyone</h1>
+                        <p>Writers, Creaters and dreamers</p>
+                      </div>
+                     </div>
+                     <div className="border border-gray-300 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-gray-400">
+                        Create, edit, and generate engaging multiple story
+                        <br />
+                         variations from a single prompt.
+                          <br />                
+                         Perfect for writers, creators, and enthusiasts 
+                         <br />
+                         exploring the future of fiction.
+                     </div>
+                </div>
+        
+        <div className="w-full max-w-md bg-slate-50 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 sm:p-10 shadow-2xl">
+          <h3 className="text-center text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-200">
             {showOtpField ? "Verify Your Email" : "Create Account"}
           </h3>
 
           {!showOtpField && (
-            <p className="mt-2 mb-6 text-center text-sm text-slate-400">
+            <p className="mt-2 mb-6 text-center text-sm text-slate-500 dark:text-slate-400">
               Join StorySparkAI and begin your creative journey.
             </p>
           )}
-
+          <body className="overflow-x-hidden"></body>
           {!showOtpField && (
             <div className="relative mb-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-700/50"></div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-slate-800/60 text-slate-400 font-semibold">
+             <div className="relative flex justify-center text-sm">
+                <span className="bg-white dark:bg-slate-800/60 text-slate-800 dark:text-slate-400 font-semibold">
                   SIGN UP WITH EMAIL
                 </span>
               </div>
@@ -285,19 +340,24 @@ const SignUpComponent = () => {
           )}
 
           {!showOtpField ? (
-            <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+
+            <form className="space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate> 
+
+            <form className="space-y-5 w-full max-w-full min-w-0" onSubmit={handleSubmit(onSubmit)}>
+
               <SSInput
                 label="Name"
                 name="name"
                 placeholder="Enter your name"
                 required={true}
-                icon="fas fa-user"
+                icon="fi fi-rr-user"
                 register={register}
+                autoComplete="name"
                 validation={{
                   required: "Name is required",
                 minLength: {
-                value: 2,
-                message: "Name must be at least 2 characters",
+                value: 3,
+                message: "Name must be at least 3 characters",
                 },
                   pattern: {
                     value: /^[A-Za-z0-9\s._]+$/,
@@ -314,8 +374,9 @@ const SignUpComponent = () => {
                 type="email"
                 placeholder="Enter your email"
                 required={true}
-                icon="fas fa-envelope"
+                icon="fi fi-rr-envelope"
                 register={register}
+                autoComplete="email"
                 error={errors.email}
               />
 
@@ -325,11 +386,13 @@ const SignUpComponent = () => {
                 type="password"
                 placeholder="Enter your password"
                 required={true}
-                icon="fas fa-lock"
+                icon="fi fi-rr-lock"
                 register={register}
+                autoComplete="new-password"
                 error={errors.password}
               />
 
+              {password?.length > 0 && (
               <div className="space-y-3 -mt-2">
                 <div
                   className="w-full h-2 bg-slate-700 rounded-full overflow-hidden"
@@ -367,6 +430,7 @@ const SignUpComponent = () => {
                   })}
                 </ul>
               </div>
+)}
 
               <SSInput
                 label="Confirm Password"
@@ -374,22 +438,39 @@ const SignUpComponent = () => {
                 type="password"
                 placeholder="Confirm your password"
                 required={true}
-                icon="fas fa-eye"
+                icon="fi fi-rr-lock" 
                 register={register}
+                autoComplete="new-password"
                 error={errors.confirmPassword}
               />
 
               <SSButton text="Sign Up" type="submit" isLoading={isBusy} />
             </form>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-5 w-full max-w-full min-w-0">
               <SSInput
                 label="OTP"
                 name="otp"
                 placeholder="Enter your OTP"
                 required={true}
-                icon="fas fa-key"
+                icon="fi fi-rr-key"
                 register={register}
+                validation={{
+                  required: "Please enter OTP",
+                  minLength: {
+                    value: 6,
+                    message: "OTP must be 6 digits",
+                  },
+                  maxLength: {
+                    value: 6,
+                    message: "OTP must be 6 digits",
+                  },
+                  pattern: {
+                    value: /^[0-9]{6}$/,
+                    message: "OTP must contain only numbers",
+                  },
+                }}
+                error={errors.otp}
               />
 
               <SSButton
@@ -425,8 +506,8 @@ const SignUpComponent = () => {
           )}
         </div>
       </div>
-
       <Toaster position="top-right" reverseOrder={false} />
+    </div>
     </div>
   );
 };
