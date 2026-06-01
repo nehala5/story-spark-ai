@@ -1,12 +1,20 @@
+import express, {
+  Application,
+  NextFunction,
+  Request,
+  Response,
+  RequestHandler,
+} from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import express, { Application, NextFunction, Request, Response } from "express";
 import cors from "cors";
 import httpStatus from "http-status";
 import cookieParser from "cookie-parser";
 import config from "./config";
 import { Routers } from "./router";
 import globalErrorHandler from "./app/middleware/global.error.handler";
+import storyRoutes from "./routes/story.routes";
+
 
 const app: Application = express();
 app.set("trust proxy", 1); // Trust first proxy to securely read req.ip
@@ -17,7 +25,7 @@ const limiter = rateLimit({
   message: "Too many requests, please try again later."
 });
 
-app.use(limiter);
+app.use(limiter as RequestHandler);
 
 
 
@@ -32,7 +40,7 @@ const corsOrigins =
     ? config.cors_origins
     : defaultCorsOrigins;
 
-// ── FIXED CORS MIDDLEWARE ENGINE (WITH CORRECTED SYNTAX BRACKETS) ──
+// ── CORS MIDDLEWARE ──
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -40,36 +48,38 @@ app.use(
         callback(null, true);
       } else {
         callback(new Error("Blocked by Cross-Origin Resource Sharing (CORS) Policy"));
-      } // <-- Safely closed the else statement block here
-    },  // <-- Safely closed the origin function assignment here
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cookie"], 
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cookie"],
   })
 );
 
+// ✅ FIX: BODY PARSERS MUST COME BEFORE ROUTES
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Keeps your extended payload parsing enabled
-app.use(cookieParser() as any);
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser() as unknown as RequestHandler);
 
-
-// Routes
+// ── ROUTES ──
+app.use("/review", storyRoutes);
 app.use("/api/v1", Routers);
 
-// Global 404 Fallback Handler
+// ── 404 HANDLER ──
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.status(httpStatus.NOT_FOUND).json({
     success: false,
     message: "Not Found",
-    errorMessage: [
+    errorMessages: [
       {
-        path: req.originalUrl,
-        message: "API Not Found",
+      path: req.originalUrl,
+      message: "API Not Found",
       },
     ],
   });
 });
 
+// ── GLOBAL ERROR HANDLER ──
 app.use(globalErrorHandler);
 
 export default app;
