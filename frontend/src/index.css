@@ -1113,6 +1113,7 @@ html.dark .contact-form-top-line {
 
 /* ── Input fields ── */
 .contact-input {
+  box-sizing: border-box;
   outline: none;
   border: 1px solid rgba(148, 163, 184, 0.28);
   background: rgba(255, 255, 255, 0.88);
