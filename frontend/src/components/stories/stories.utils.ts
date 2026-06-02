@@ -92,13 +92,6 @@ export const TOPICS: ITopicData[] = [
 
 export const topicsData: ITopicData[] = TOPICS;
 
-export const getWordCount = (str: string) => {
-  if (typeof str !== "string" || !str.trim()) {
-    return 0;
-  }
-  return str.trim().split(/\s+/).length;
-};
-
 export const prompts = [
   {
     id: 1,

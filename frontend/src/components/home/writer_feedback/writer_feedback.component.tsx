@@ -4,6 +4,14 @@ import defaultAvatar from "../../../assets/logoNew.png";
 import ImageFallback from "../../ImageFallback";
 import ReviewForm from "./ReviewForm";
 
+export interface Review {
+  _id?: string;
+  name: string;
+  role: string;
+  feedback: string;
+  imgSrc?: string;
+}
+
 const WriterFeedbackComponent = () => {
   const { data: feedbackData = [], isLoading } =
     useGetReviewsQuery({});

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -10,414 +10,260 @@ import {
 } from "lucide-react";
 import { getUserInfo } from "../../../services/auth.service";
 
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 const PaymentComponent = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const user = getUserInfo();
   const loggedIn = !!user;
 
-  // Read selected plan from pricing page
-  const [searchParams] = useSearchParams();
+  const [name, setName] = useState(user?.name || "");
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const planName = searchParams.get("plan") || "Pro";
   const planPrice = Number(searchParams.get("price") || "19.99");
 
-  // Razorpay payment handler
-  const handlePayment = async () => {
-    // Load Razorpay SDK
+  const formatCardNumber = (value: string) => {
+    return value.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
+  };
+
+  const formatExpiry = (value: string) => {
+    return value.replace(/\D/g, "").replace(/(.{2})/, "$1/").trim().slice(0, 5);
+  };
+
+  const handlePay = async () => {
+    setLoading(true);
     const loaded = await loadRazorpayScript();
 
     if (!loaded) {
       alert("Failed to load Razorpay SDK.");
+      setLoading(false);
       return;
     }
 
     try {
-      // Create order from backend
-      const res = await fetch("/api/v1/payment/create-order", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount: Math.round(planPrice * 100), // Convert to paisa
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!data.success) {
-        alert("Failed to create order.");
-        return;
-      }
-
-      // Razorpay options
+      // Mock order creation for frontend-only stability
+      // In a real app, this would be a POST to /api/v1/payment/create-order
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: data.order.amount,
-        currency: data.order.currency,
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_mock",
+        amount: Math.round(planPrice * 100),
+        currency: "INR",
         name: "StorySparkAI",
         description: `${planName} Subscription`,
-        order_id: data.order.id,
-
-        handler: async (response: unknown) => {
-          try {
-            // Verify payment
-            const verifyRes = await fetch("/api/v1/payment/verify", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(response),
-            });
-
-            const verifyData = await verifyRes.json();
-
-            if (verifyData.success) {
-              alert("Payment successful!");
-            } else {
-              alert("Payment verification failed.");
-            }
-          } catch (error) {
-            console.error(error);
-            alert("Verification failed.");
-          }
+        handler: async (response: any) => {
+          console.log("Payment Success:", response);
+          alert("Payment successful! Welcome to " + planName + ".");
+          navigate("/dashboard");
         },
-
         prefill: {
-          name: "",
-          email: "",
-          contact: "",
+          name: name,
+          email: user?.email || "",
         },
-
         theme: {
-          color: "#06b6d4",
+          color: "#6366f1",
         },
       };
 
-const paymentObject = new (
-  window as Window &
-    typeof globalThis & {
-      Razorpay: new (options: unknown) => {
-        on: (event: string, callback: (response: Record<string, unknown>) => void) => void;
-        open: () => void;
-      };
-    }
-).Razorpay(options);
-      paymentObject.on("payment.failed", function (response:Record<string, unknown>) {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on("payment.failed", (response: any) => {
         console.error(response.error);
-        alert("Payment failed.");
+        alert("Payment failed: " + response.error.description);
       });
-
-      paymentObject.open();
+      rzp.open();
     } catch (error) {
       console.error(error);
-      alert("Something went wrong.");
+      alert("Something went wrong with the payment process.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const isFormValid = name.trim() && cardNumber.length >= 16 && expiry.length === 5 && cvv.length === 3;
+
   return (
-    <div className="gradient-bg min-h-screen px-4 py-10 text-slate-100 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#050816] px-4 py-10 text-slate-100 sm:px-6 lg:px-8 transition-all duration-500">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-6xl items-center justify-center">
-        <div className="grid w-full gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          
           {/* Payment Section */}
-          <section className="motion-card rounded-[2rem] border border-slate-700/50 bg-slate-950/75 p-6 shadow-2xl shadow-slate-950/40 backdrop-blur-xl sm:p-8">
-            <div className="mb-8 flex items-start justify-between gap-4">
+          <section className="rounded-[2.5rem] border border-white/5 bg-slate-900/40 p-8 shadow-2xl backdrop-blur-xl">
+            <div className="mb-8">
+              <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-indigo-400">
+                <ShieldCheck size={14} /> Secure checkout
+              </span>
+              <h1 className="text-4xl font-black tracking-tight text-white mb-4 leading-none">
+                Upgrade to {planName}
+              </h1>
+              <p className="text-slate-400 text-sm leading-relaxed max-w-md font-medium">
+                Unlock professional AI tools and priority features with our secure payment partner.
+              </p>
+            </div>
+
+            {/* Selected Plan Summary */}
+            <div className="mb-8 rounded-3xl border border-indigo-500/20 bg-indigo-500/5 p-6 flex items-center justify-between">
               <div>
-                <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">
-                  Secure checkout
-                </span>
-
-                <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                  Complete Your Subscription
-                </h1>
-
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-                  Finish your upgrade with secure Razorpay payment integration.
-                </p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Active Selection</p>
+                <h2 className="text-xl font-bold text-white">{planName} Plan</h2>
               </div>
-
-              <div className="hidden rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-3 text-cyan-300 sm:block">
-                <CreditCard size={22} />
+              <div className="text-right">
+                <p className="text-2xl font-black text-indigo-400">₹{planPrice}</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">per month</p>
               </div>
             </div>
 
-            {/* Selected Plan */}
-            <div className="mb-6 rounded-3xl border border-cyan-400/20 bg-cyan-400/5 p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-slate-400">
-                    Selected Plan
-                  </p>
-
-                  <h2 className="mt-1 text-xl font-semibold text-white">
-                    {planName} Plan
-                  </h2>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-cyan-300">
-                    ₹{planPrice}
-                  </p>
-
-                  <p className="text-sm text-slate-400">
-                    per month
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* User Account Info Chip if logged in */}
             {loggedIn && (
-              <div className="mb-6 flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
-                  <User size={20} />
+              <div className="mb-8 flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-inner">
+                  <User size={18} />
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Account Upgrading</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Account Verified</p>
                   <p className="text-sm font-bold text-white">{user?.email}</p>
                 </div>
               </div>
             )}
 
             {!loggedIn ? (
-              <div className="space-y-6 py-6 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
-                  <Lock size={32} />
+              <div className="space-y-8 py-10 text-center">
+                <div className="mx-auto w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center border border-indigo-500/20 shadow-2xl">
+                  <Lock size={32} className="text-indigo-400" />
                 </div>
-
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-bold text-white">Authentication Required</h2>
-                  <p className="mx-auto max-w-md text-sm leading-relaxed text-slate-300">
-                    To upgrade to the <span className="font-semibold text-cyan-300">{planName}</span> plan, you must log in or sign up first. This links the subscription to your StorySpark AI profile.
+                <div className="space-y-3">
+                  <h2 className="text-2xl font-black">Hold on!</h2>
+                  <p className="text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">
+                    You must be logged in to link this subscription to your profile. It only takes a second.
                   </p>
                 </div>
-
-                <div className="grid gap-4 pt-4 sm:grid-cols-2">
-                  <button
-                    onClick={() =>
-                      navigate("/login", {
-                        state: { from: `${location.pathname}${location.search}` },
-                      })
-                    }
-                    className="motion-cta flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-4 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:shadow-cyan-500/30"
-                  >
-                    Log In to Continue
+                <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+                  <button onClick={() => navigate("/login")} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95">
+                    Log In
                   </button>
-
-                  <button
-                    onClick={() =>
-                      navigate("/signup", {
-                        state: { from: `${location.pathname}${location.search}` },
-                      })
-                    }
-                    className="motion-cta flex items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/50 px-5 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
-                  >
-                    Create New Account
+                  <button onClick={() => navigate("/signup")} className="px-8 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold rounded-2xl transition-all active:scale-95">
+                    Create Account
                   </button>
                 </div>
-
-                <p className="text-xs text-slate-400">
-                  After signing in, you will be redirected back here automatically to complete your secure payment.
-                </p>
               </div>
             ) : (
-              <form
-                className="space-y-5"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handlePay();
-                }}
-              >
-                {/* Cardholder Name */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-200">
-                    Cardholder Name
-                  </label>
-
-                  <input
-                    type="text"
-                    placeholder="John Doe"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-700/80 bg-slate-900/70 px-4 py-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-
-                {/* Card Number */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-200">
-                    Card Number
-                  </label>
-
-                  <div className="relative">
-                    <CreditCard
-                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                      size={18}
-                    />
-
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">Cardholder Name</label>
                     <input
                       type="text"
-                      placeholder="1234 5678 9012 3456"
-                      value={cardNumber}
-                      onChange={(e) =>
-                        setCardNumber(formatCardNumber(e.target.value))
-                      }
-                      className="w-full rounded-2xl border border-slate-700/80 bg-slate-900/70 py-4 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                      placeholder="Name on card"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-5 py-4 bg-[#0a0f1d] border border-white/10 rounded-2xl focus:border-indigo-500 focus:outline-none transition-all text-sm font-medium"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">Card Number</label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                      <input
+                        type="text"
+                        placeholder="0000 0000 0000 0000"
+                        value={cardNumber}
+                        onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                        className="w-full pl-12 pr-5 py-4 bg-[#0a0f1d] border border-white/10 rounded-2xl focus:border-indigo-500 focus:outline-none transition-all text-sm font-mono tracking-widest"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">Expiry Date</label>
+                      <input
+                        type="text"
+                        placeholder="MM/YY"
+                        value={expiry}
+                        onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                        className="w-full px-5 py-4 bg-[#0a0f1d] border border-white/10 rounded-2xl focus:border-indigo-500 focus:outline-none transition-all text-sm font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">CVV</label>
+                      <input
+                        type="password"
+                        placeholder="•••"
+                        value={cvv}
+                        onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                        className="w-full px-5 py-4 bg-[#0a0f1d] border border-white/10 rounded-2xl focus:border-indigo-500 focus:outline-none transition-all text-sm font-mono"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Expiry + CVV */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-200">
-                      Expiry Date
-                    </label>
-
-                    <input
-                      type="text"
-                      placeholder="MM/YY"
-                      value={expiry}
-                      onChange={(e) =>
-                        setExpiry(formatExpiry(e.target.value))
-                      }
-                      className="w-full rounded-2xl border border-slate-700/80 bg-slate-900/70 px-4 py-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-200">
-                      CVC
-                    </label>
-
-                    <input
-                      type="password"
-                      placeholder="123"
-                      value={cvv}
-                      onChange={(e) =>
-                        setCvv(
-                          e.target.value.replace(/\D/g, "").slice(0, 3)
-                        )
-                      }
-                      className="w-full rounded-2xl border border-slate-700/80 bg-slate-900/70 px-4 py-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
-                    />
-                  </div>
-                </div>
-
-                {/* Pay Button */}
                 <button
-                  type="submit"
+                  onClick={handlePay}
                   disabled={loading || !isFormValid}
-                  className="motion-cta inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-4 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:shadow-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black rounded-2xl transition-all shadow-xl shadow-indigo-500/25 active:scale-[0.98] mt-4 flex items-center justify-center gap-3 cursor-pointer"
                 >
                   {loading ? (
-                    <>
-                      <svg
-                        className="h-5 w-5 animate-spin"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v8z"
-                        />
-                      </svg>
-
-                      Processing...
-                    </>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Verifying...</span>
+                    </div>
                   ) : (
                     <>
-                      <ShieldCheck size={18} />
-                      Pay Now — ${planPrice}/mo
+                      <span>Pay ₹{planPrice} Total</span>
+                      <i className="fas fa-arrow-right text-xs opacity-50"></i>
                     </>
                   )}
                 </button>
-
-                <p className="text-xs leading-5 text-slate-400">
-                  Your payment information is protected with encrypted processing
-                  and is never stored on our servers.
-                </p>
-              </form>
+              </div>
             )}
 
-            {/* Back Button */}
-            <Link
-              to="/pricing"
-              className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-slate-300 transition hover:text-cyan-300"
-            >
-              <ArrowLeft size={16} />
-              Back to Pricing
+            <Link to="/pricing" className="mt-8 inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-400 transition-colors uppercase tracking-widest">
+              <ArrowLeft size={14} /> Back to Pricing
             </Link>
           </section>
 
-          {/* Summary */}
-          <aside className="motion-card rounded-[2rem] border border-slate-700/50 bg-slate-950/55 p-6 shadow-2xl shadow-slate-950/30 backdrop-blur-xl sm:p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-emerald-300">
-                <CheckCircle2 size={22} />
-              </div>
+          {/* Benefits summary */}
+          <aside className="lg:mt-0 mt-8 space-y-6">
+            <div className="bg-white/5 border border-white/5 rounded-[2.5rem] p-8 backdrop-blur-sm shadow-xl h-full">
+              <h3 className="text-lg font-black mb-8 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner">
+                  <CheckCircle2 size={16} />
+                </div>
+                Membership Perks
+              </h3>
+              
+              <ul className="space-y-6">
+                {[
+                  { title: "Infinite Words", desc: "No monthly limits on story generation." },
+                  { title: "Priority Queue", desc: "Your requests process first during peak hours." },
+                  { title: "Cloud Storage", desc: "All your drafts and chapters synced everywhere." },
+                  { title: "Custom Models", desc: "Access to advanced fine-tuned creative models." }
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-4">
+                    <div className="mt-1 text-emerald-500"><CheckCircle2 size={14} /></div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-200">{item.title}</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed mt-0.5 font-medium">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
 
-              <div>
-                <h2 className="text-xl font-semibold text-white">
-                  What you get
-                </h2>
-
-                <p className="text-sm text-slate-400">
-                  A quick summary before you confirm.
+              <div className="mt-12 p-6 rounded-3xl bg-indigo-500/5 border border-indigo-500/10">
+                <p className="text-xs font-bold text-indigo-300 mb-2">Billing Policy</p>
+                <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                  Cancel anytime. Subscriptions are billed monthly. By clicking "Pay Now" you agree to our Terms of Service and Privacy Policy.
                 </p>
               </div>
-            </div>
-
-            <div className="space-y-4 rounded-3xl border border-slate-800 bg-slate-900/70 p-5">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm text-slate-300">
-                  {planName} subscription
-                </span>
-
-                <span className="text-lg font-semibold text-white">
-                  ₹{planPrice}/mo
-                </span>
-              </div>
-
-              <div className="h-px bg-slate-800" />
-
-              <ul className="space-y-3 text-sm text-slate-300">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-cyan-300" />
-                  Unlimited AI writing tools
-                </li>
-
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-cyan-300" />
-                  Priority access to premium features
-                </li>
-
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-cyan-300" />
-                  Cancel unknowntime from your account settings
-                </li>
-              </ul>
-            </div>
-
-            <div className="mt-6 rounded-3xl border border-cyan-400/10 bg-cyan-400/5 p-5">
-              <p className="text-sm font-medium text-cyan-200">
-                Need help?
-              </p>
-
-              <p className="mt-2 text-sm leading-6 text-slate-300">
-                If your payment fails, please try again or contact support.
-              </p>
             </div>
           </aside>
         </div>

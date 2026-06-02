@@ -1,7 +1,12 @@
 import { AccessToken } from "../../models/login";
 import baseApi from "../base_api/base.api";
-import { AUTH_URL } from "../base_api/base.endpoints";
+import { AUTH_URL, OTP_URL } from "../base_api/base.endpoints";
 import { tagTypes } from "../tag-types";
+
+export interface AuthResponse {
+  data: AccessToken & { expiresAt?: string };
+  message?: string;
+}
 
 const authApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -11,8 +16,8 @@ const authApi = baseApi.injectEndpoints({
         method: "POST",
         data: data,
       }),
-      transformResponse: (response: { data: AccessToken }) => {
-        return { data: response.data };
+      transformResponse: (response: AuthResponse) => {
+        return { data: response.data, message: response.message };
       },
       invalidatesTags: [tagTypes.user],
     }),
@@ -22,8 +27,8 @@ const authApi = baseApi.injectEndpoints({
         method: "POST",
         data: data,
       }),
-      transformResponse: (response: { data: AccessToken }) => {
-        return { data: response.data };
+      transformResponse: (response: AuthResponse) => {
+        return { data: response.data, message: response.message };
       },
       invalidatesTags: [tagTypes.user],
     }),
@@ -33,10 +38,27 @@ const authApi = baseApi.injectEndpoints({
         method: "POST",
         data: data,
       }),
-      transformResponse: (response: { data: AccessToken }) => {
-        return { data: response.data };
+      transformResponse: (response: AuthResponse) => {
+        return { data: response.data, message: response.message };
       },
       invalidatesTags: [tagTypes.user],
+    }),
+    emailVerify: build.mutation({
+      query: (data) => ({
+        url: `/${OTP_URL}/verify-email`,
+        method: "POST",
+        data: data,
+      }),
+      transformResponse: (response: AuthResponse) => {
+        return { data: response.data, message: response.message };
+      },
+    }),
+    verifyOtp: build.mutation({
+      query: (data) => ({
+        url: `/${OTP_URL}/verify-otp`,
+        method: "POST",
+        data: data,
+      }),
     }),
     forgotPassword: build.mutation({
       query: (data) => ({
@@ -51,8 +73,8 @@ const authApi = baseApi.injectEndpoints({
         method: "POST",
         data: data,
       }),
-      transformResponse: (response: { data: AccessToken }) => {
-        return { data: response.data };
+      transformResponse: (response: AuthResponse) => {
+        return { data: response.data, message: response.message };
       },
       invalidatesTags: [tagTypes.user],
     }),
@@ -63,6 +85,8 @@ export const {
   useLoginUserMutation,
   useGoogleLoginMutation,
   useRegisterUserMutation,
+  useEmailVerifyMutation,
+  useVerifyOtpMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,
 } = authApi;

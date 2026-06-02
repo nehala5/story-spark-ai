@@ -20,6 +20,7 @@ import BookmarkButton from "../BookmarkButton";
 import AudioPlayer from "../AudioPlayer";
 
 import { formatDateShort } from "../../utils/time-formate";
+import { formatReadingStats } from "../../utils/story-utils";
 import { getUserInfo } from "../../services/auth.service";
 
 import { useToggleReactionMutation } from "../../redux/apis/reaction.api";
@@ -261,6 +262,8 @@ const PostDetailsComponent = () => {
 
                   <div className="flex items-center text-sm text-slate-500 dark:text-gray-500">
                     <span>{formatDateShort(post ? post?.createdAt : "")}</span>
+                    <span className="mx-2">•</span>
+                    <span>{formatReadingStats(post?.content)}</span>
                   </div>
                 </div>
               </div>

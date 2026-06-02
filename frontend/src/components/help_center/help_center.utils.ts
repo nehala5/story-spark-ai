@@ -1,8 +1,9 @@
 // FAQ Structure
 export interface FAQItem {
+  id: string;
   question: string;
   answer: string;
-  keywords: string[]; // Strict type array prevents TS2488 Spread Iterator crash
+  keywords: string[];
 }
 
 export interface Support_Links {
@@ -28,7 +29,7 @@ export interface HelpCategory {
   description: string;
   icon: string;
   keywords: string[];
-  sectionId: string; // FIX: Resolves category.sectionId error
+  sectionId: string;
 }
 
 // TroubleshootItem Model
@@ -37,19 +38,35 @@ export interface TroubleshootItem {
   title: string;
   description: string;
   keywords: string[];
-  icon: string;       // FIX: Resolves item.icon layout crash
-  symptoms: string;   // FIX: Resolves item.symptoms layout crash
-  solution: string;   // FIX: Resolves item.solution layout crash
+  icon: string;
+  symptoms: string;
+  solution: string;
+}
+
+export interface HelpSection {
+  id: string;
+  label: string;
+  icon: string;
 }
 
 // Data Sets
+export const HELP_SECTIONS: HelpSection[] = [
+  { id: "categories", label: "Categories", icon: "fa-layer-group" },
+  { id: "faq-section", label: "FAQs", icon: "fa-circle-question" },
+  { id: "setup-guide-section", label: "Setup", icon: "fa-code" },
+  { id: "troubleshoot-section", label: "Fixes", icon: "fa-screwdriver-wrench" },
+  { id: "support-links-section", label: "Support", icon: "fa-headset" },
+];
+
 export const FAQ_ITEMS: FAQItem[] = [
   {
+    id: "faq-1",
     question: "How does StorySparkAI generate stories?",
     answer: "StorySparkAI uses advanced language models to interpret your prompt, style preferences, and narrative depth parameters to build a cohesive text layout structure automatically.",
     keywords: ["generate", "story", "ai", "how"]
   },
   {
+    id: "faq-2",
     question: "Can I export my stories?",
     answer: "Yes, you can save and export your generated works into Markdown formatting or plain text documents directly from your workspace dashboard panel.",
     keywords: ["export", "download", "markdown", "save"]

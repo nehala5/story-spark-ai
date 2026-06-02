@@ -2,7 +2,7 @@ import React, { useMemo, useRef } from "react";
 import html2canvas from "html2canvas";
 import toast from "react-hot-toast";
 import type { IStories } from "../stories/stories.view.component";
-import { getWordCount } from "../stories/stories.utils";
+import { getWordCount } from "../../utils/story-utils";
 import StoryCoverImage from "../stories/StoryCoverImage";
 
 export type StoryCardRarity = "Common" | "Rare" | "Epic" | "Legendary";
@@ -103,7 +103,7 @@ const getKeyQuote = (content: string) => {
 };
 
 const getGenreLabel = (story: IStories) =>
-  cleanText(story.genre || story.tag || "Story").replace(/^[^\w]+/, "") ||
+  cleanText(story.tag || "Story").replace(/^[^\w]+/, "") ||
   "Story";
 
 interface StoryTradingCardProps {

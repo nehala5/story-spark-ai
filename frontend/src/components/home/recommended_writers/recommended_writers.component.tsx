@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { isLoggedIn } from "../../../services/auth.service";
 import { useToggleFollowMutation } from "../../../redux/apis/user.api";
 import ImageFallback from "../../ImageFallback";
-ImageFallback
+import toast from "react-hot-toast";
 
 const RecommendedWritersComponent = () => {
   const recommendedWriters = [
@@ -27,11 +27,11 @@ const RecommendedWritersComponent = () => {
     },
   ];
 
-  const [following, setFollowing] = useState<number[]>([]);
+  const [following, setFollowing] = useState<string[]>([]);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [toggleFollowMutation, { isLoading }] = useToggleFollowMutation();
 
-  const toggleFollow = async (index: number, authorId: string) => {
+  const toggleFollow = async (authorId: string) => {
     if (!isLoggedIn()) {
       setShowLoginModal(true);
       return;
@@ -39,46 +39,57 @@ const RecommendedWritersComponent = () => {
 
     try {
       await toggleFollowMutation(authorId).unwrap();
-
-      if (following.includes(index)) {
-        setFollowing(following.filter((id) => id !== index));
+      if (following.includes(authorId)) {
+        setFollowing(following.filter((id) => id !== authorId));
+        toast.success("Unfollowed successfully");
       } else {
-        setFollowing([...following, index]);
+        setFollowing([...following, authorId]);
+        toast.success("Followed successfully");
       }
     } catch (error) {
       console.error("Failed to toggle follow:", error);
+      toast.error("Failed to toggle follow");
     }
   };
 
   return (
     <>
-      <section className="bg-blue-500/10 rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-gray-300 mb-4">
+      <section className="bg-white dark:bg-blue-500/10 rounded-2xl border border-slate-200 dark:border-white/5 p-6 transition-all duration-300">
+        <h3 className="text-lg font-bold text-slate-900 dark:text-gray-200 mb-6">
           Recommended Writers
         </h3>
 
-        <div className="space-y-4">
-          {recommendedWriters.map((writer, index) => (
-            <div key={writer.id} className="flex items-center justify-between">
+        <div className="space-y-5">
+          {recommendedWriters.map((writer) => (
+            <div key={writer.id} className="flex items-center justify-between group">
               <div className="flex items-center">
-                <ImageFallback
-                  className="h-10 w-10 rounded-full"
-                <img
-                  className="h-10 w-10 rounded-full object-cover"
-                  src={writer.image}
-                  alt={writer.name}
-                />
+                <div className="relative">
+                  <ImageFallback
+                    className="h-11 w-11 rounded-full object-cover border-2 border-slate-100 dark:border-white/10 group-hover:border-indigo-500 transition-colors"
+                    src={writer.image}
+                    alt={writer.name}
+                  />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-[#0f172a] rounded-full"></div>
+                </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-slate-700 dark:text-gray-400">
+                  <p className="text-sm font-bold text-slate-800 dark:text-gray-200">
                     {writer.name}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-gray-500">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     {writer.role}
                   </p>
                 </div>
               </div>
-              <button disabled={isLoading} onClick={() => toggleFollow(index, writer.id)} className="motion-cta rounded-full px-3 py-1.5 text-sm text-white font-semibold disabled:opacity-50">
-                {following.includes(index) ? "Following" : "Follow"}
+              <button
+                disabled={isLoading}
+                onClick={() => toggleFollow(writer.id)}
+                className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                  following.includes(writer.id)
+                    ? "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400"
+                    : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 cursor-pointer"
+                } disabled:opacity-50`}
+              >
+                {following.includes(writer.id) ? "Following" : "Follow"}
               </button>
             </div>
           ))}
@@ -87,38 +98,38 @@ const RecommendedWritersComponent = () => {
 
       {showLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#0f172a] border border-white/10 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)] max-w-md w-full p-6 transform transition-all">
+          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 rounded-[2rem] shadow-2xl max-w-md w-full p-8 transform transition-all text-slate-900 dark:text-white">
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i className="fas fa-user-lock text-2xl text-blue-400"></i>
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i className="fas fa-user-lock text-2xl text-blue-500"></i>
               </div>
 
-              <h3 className="text-2xl font-bold text-gray-200 mb-2">
+              <h3 className="text-2xl font-black mb-2">
                 Authentication Required
               </h3>
 
-              <p className="text-gray-400 mb-6 leading-relaxed">
-                You need to log in or sign up to follow writers.
+              <p className="text-slate-500 dark:text-gray-400 mb-8 leading-relaxed">
+                Join our community to follow your favorite writers and stay updated with their latest stories.
               </p>
 
               <div className="flex flex-col gap-3">
                 <Link
                   to="/login"
-                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-500/25"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/25"
                 >
                   Log In
                 </Link>
 
                 <Link
                   to="/signup"
-                  className="w-full bg-white/5 hover:bg-white/10 text-white font-medium py-3 px-4 rounded-xl transition-all border border-white/10"
+                  className="w-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-white font-bold py-3.5 px-4 rounded-xl transition-all border border-slate-200 dark:border-white/10"
                 >
-                  Sign Up
+                  Create Account
                 </Link>
 
                 <button
                   onClick={() => setShowLoginModal(false)}
-                  className="w-full bg-transparent hover:bg-white/5 text-gray-400 hover:text-gray-300 font-medium py-3 px-4 rounded-xl transition-all mt-1"
+                  className="w-full bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 text-slate-400 hover:text-slate-500 font-bold py-3 px-4 rounded-xl transition-all mt-2 cursor-pointer"
                 >
                   Cancel
                 </button>

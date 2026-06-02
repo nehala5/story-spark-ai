@@ -26,6 +26,10 @@ export interface User {
   lastRequestDate: string | null;
   posts: string[];
   isApplyForWriter: boolean;
+  writingGoals?: {
+    dailyWordCount: number;
+    weeklyWordCount: number;
+  };
   createdAt: string;
   updatedAt: string;
   profile: UserProfile;

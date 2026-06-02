@@ -1,22 +1,17 @@
+import React, { useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { useState } from "react";
-import "./auth.css";
-
-import "@flaticon/flaticon-uicons/css/all/all.css";
+import { Link, useNavigate } from "react-router-dom";
+import toast, { Toaster } from "react-hot-toast";
+import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 import {
   useLoginUserMutation,
   useGoogleLoginMutation,
 } from "../../redux/apis/auth.api";
-import { storeUserInfo, getUserInfo } from "../../services/auth.service";
-import { USER_ROLE } from "../../constants/role";
-import RedirectComponent from "../redirect.component";
-import toast, { Toaster } from "react-hot-toast";
-import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
+import { storeUserInfo } from "../../services/auth.service";
+import SSInput from "../ui-component/ss-input/ss-input";
+import SSButton from "../ui-component/ss-button/ss-button";
 import { WandSparkles, BookOpen, UsersRound } from "lucide-react";
-
-
-
-
 
 type Inputs = {
   email: string;
@@ -24,260 +19,138 @@ type Inputs = {
 };
 
 const LoginComponent = () => {
+  const navigate = useNavigate();
+  const [isBusy, setIsBusy] = useState(false);
+  const { register, handleSubmit, formState: { errors } } = useForm<Inputs>();
+
   const [loginUser] = useLoginUserMutation();
-  const [googleLogin] = useGoogleLoginMutation();
-
-  const {
-    register,
-    handleSubmit,
-  } = useForm<Inputs>({ mode: "onChange" });
-
-  const [isBusy, setIsBusy] = useState<boolean>(false);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [socialLogin] = useGoogleLoginMutation();
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
+    if (isBusy) return;
     setIsBusy(true);
     try {
-      const res = await loginUser({ ...data }).unwrap();
-      if (res.data.accessToken) {
-        toast.success("User logged in successfully!");
-        storeUserInfo({ accessToken: res.data.accessToken });
-        setIsLoggedIn(true);
+      const res = await loginUser(data).unwrap();
+      if (res?.data) {
+        storeUserInfo(res.data);
+        toast.success("Welcome back to StorySpark AI!");
+        navigate("/");
       }
-    } catch {
-      toast.error("Login failed. Please check your credentials.");
+    } catch (error: any) {
+      toast.error(error?.data?.message || "Invalid email or password");
     } finally {
       setIsBusy(false);
     }
   };
 
-  const handleGoogleLoginSuccess = async (
-    credentialResponse: CredentialResponse
-  ) => {
+  const handleGoogleLoginSuccess = async (response: CredentialResponse) => {
+    if (!response.credential) return;
     setIsBusy(true);
     try {
-      const res = await googleLogin({
-        token: credentialResponse.credential,
+      const decoded: any = jwtDecode(response.credential);
+      const res = await socialLogin({
+        name: decoded.name,
+        email: decoded.email,
+        profileImage: decoded.picture,
       }).unwrap();
-      if (res.data.accessToken) {
-        toast.success("User logged in successfully with Google!");
-
-
-        storeUserInfo({
-          accessToken: res.data.accessToken,
-        });
-
-
-        setIsLoggedIn(true);
+      if (res?.data) {
+        storeUserInfo(res.data);
+        toast.success("Signed in with Google!");
+        navigate("/");
       }
-    } catch {
-      toast.error("Failed to login with Google. Please try again.");
+    } catch (error: any) {
+      toast.error("Google login failed");
     } finally {
       setIsBusy(false);
     }
   };
-
-  const handleGoogleLoginError = () => {
-    toast.error("Google login failed. Please try again.");
-  };
-
-  if (isLoggedIn) {
-    const userInfo = getUserInfo();
-    const isDashboardUser =
-      userInfo?.role === USER_ROLE.ADMIN ||
-      userInfo?.role === USER_ROLE.SUPER_ADMIN;
-    return (
-      <RedirectComponent
-        defaultPath={isDashboardUser ? "/dashboard" : "/explore"}
-      />
-    );
-  }
 
   return (
+    <div className="min-h-screen flex items-center justify-center p-4 md:p-6 bg-white dark:bg-[#050816] text-slate-900 dark:text-white transition-all duration-300">
+      <main className="flex flex-col md:flex-row overflow-hidden rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-2xl w-full max-w-6xl bg-white dark:bg-[#0b1020]">
+        
+        {/* Left Side - Branding */}
+        <section className="hidden md:flex md:w-[45%] bg-gradient-to-br from-blue-600 to-indigo-700 p-12 flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
+          
+          <div className="relative z-10">
+            <Link to="/" className="flex items-center gap-3 mb-12 group">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:scale-110 transition-transform">
+                <WandSparkles className="text-white w-5 h-5" />
+              </div>
+              <span className="text-white font-black tracking-widest text-lg uppercase">StorySpark AI</span>
+            </Link>
 
-
-
-    <div className="min-h-screen bg-white dark:bg-[#0B1120] text-slate-900 dark:text-slate-100 flex items-center justify-center relative overflow-hidden px-4 box-border">
-
-      {/* Background Glow */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="flex w-full max-w-md flex-col justify-center py-12 relative z-10 box-border">
-
-        <div className="sm:mx-auto sm:w-full sm:max-w-md mb-8">
-          <h2 className="text-center text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 drop-shadow-sm">
-            STORY SPARK AI
-          </h2>
-        </div>
-        <div className="flex justify-center items-center gap-40">
-
-        <div className="flex flex-col gap-5">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-700 bg-clip-text text-transparent">
-            
-            Turns Ideas into
-            <br /> 
-            unforgotable stories
-            
+            <h1 className="text-5xl font-black text-white leading-tight mb-8">
+              Welcome back to<br />
+              <span className="text-blue-200">Infinite</span><br />Stories.
             </h1>
-          <p>AI powered storytelling that helps you
-              <br />            
-             create connect inspire.</p>
 
-             <div className="flex justify-center items-center gap-6 border border-gray-300 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-gray-400">
-              <div>
-                <WandSparkles className="text-violet-600"/>
-              </div>
-              <div>
-                <h1 className="font-bold">Smart writing</h1>
-                <p>AI that understands your ideas</p>
-              </div>
-             </div>
-
-
-             <div className="flex justify-center items-center gap-6 border border-gray-300 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-gray-400">
-              <div>
-                <BookOpen className="text-violet-600"/>
-              </div>
-              <div>
-                <h1 className="font-bold">Endless Creativity</h1>
-                <p>Stories that captivate and inspire</p>
-              </div>
-             </div>
-
-
-             <div className="flex justify-center items-center gap-6 border border-gray-300 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-gray-400">
-              <div>
-                <UsersRound className="text-violet-600"/>
-              </div>
-              <div>
-                <h1 className="font-bold">Built for everyone</h1>
-                <p>Writers, Creaters and dreamers</p>
-              </div>
-             </div>
-             <div className="border border-gray-300 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 dark:text-gray-400">
-                Create, edit, and generate engaging multiple story
-                <br />
-                 variations from a single prompt.
-                  <br />                
-                 Perfect for writers, creators, and enthusiasts 
-                 <br />
-                 exploring the future of fiction.
-             </div>
-        </div>
-
-
-
-        <div className="w-full min-w-0 bg-slate-50 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 sm:p-10 shadow-2xl">
-
-          <img
-            src="src/assets/login.jpg"
-            alt="Background"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-
-            <button
-            onClick={() => window.location.href = "/"}
-            className="mb-4 text-sm text-blue-400 hover:text-blue-300 transition-colors duration-200 flex items-center gap-2"
-            >
-            ← Back to Home
-          </button>
-
-
-          <div className="absolute inset-0 bg-black/60"></div>
-
-          <form
-            className="w-full space-y-5 "
-            onSubmit={handleSubmit(onSubmit)}
-            >
-
-          {/* Added w-full to the form */}
-
-          <form className="space-y-5 w-full" onSubmit={handleSubmit(onSubmit)}>
-            <SSInput
-              label="Email address"
-              name="email"
-              type="email"
-              placeholder="Enter your email"
-              required={true}
-              icon="fi fi-rr-envelope"
-              register={register}
-              validation={{ required: "Email is required" }}
-              error={errors.email}
-              />
-
-            <SSInput
-              label="Password"
-              name="password"
-              type="password"
-              placeholder="Enter your password"
-              required={true}
-              icon="fi fi-rr-lock"
-              register={register}
-              validation={{ required: "Password is required" }}
-              error={errors.password}
-              />
-
-            <div className="flex justify-end -mt-2">
-              <a
-                href="/forgot-password"
-                className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200"
-                >
-                Forgot Password?
-              </a>
-            </div>
-
-            <SSButton
-              text="Sign In"
-              type="submit"
-              isLoading={isBusy}
-              />
-
-            <SSButton text="Sign In" type="submit" isLoading={isBusy} />
-          </form>
-
-          <div className="mt-6 relative w-full">
-            <div className="absolute inset-0 flex items-center w-full">
-              <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
-            </div>
-
-            <div className="relative flex justify-center text-sm w-full">
-
-              <span className="px-4 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                OR
-              </span>
-
+            <div className="space-y-6">
+              {[
+                { icon: <WandSparkles className="w-5 h-5" />, title: "Resume Writing", desc: "Pick up exactly where you left off" },
+                { icon: <BookOpen className="w-5 h-5" />, title: "Explore Community", desc: "See what others have created lately" },
+                { icon: <UsersRound className="w-5 h-5" />, title: "Collaborate", desc: "Join forces with other storytellers" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                  <div className="mt-1 text-blue-300">{item.icon}</div>
+                  <div>
+                    <h4 className="font-bold text-white text-sm">{item.title}</h4>
+                    <p className="text-blue-100/70 text-xs">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-
-          <div className="mt-6 flex justify-center list-none w-full">
-
-            <GoogleLogin
-              onSuccess={handleGoogleLoginSuccess}
-              onError={handleGoogleLoginError}
-              />
+          <div className="relative z-10 mt-8 text-blue-100/50 text-xs">
+            © 2026 StorySpark AI. Your creative portal.
           </div>
+        </section>
 
-          <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            Don't have an account?{" "}
-            <a
-              href="/signup"
-              className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200"
-              >
-              Sign up for free
-            </a>
-          </p>
-        </div>
-      </div>
+        {/* Right Side - Form */}
+        <section className="w-full md:w-[55%] p-8 sm:p-12 lg:p-16 flex flex-col justify-center bg-gray-50 dark:bg-transparent">
+          <div className="max-w-md mx-auto w-full">
+            <div className="mb-10 text-center md:text-left">
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-3">
+                Sign In
+              </h2>
+              <p className="text-slate-500 dark:text-gray-400">
+                Enter your credentials to access your creative studio.
+              </p>
+            </div>
 
-      <Toaster
-        position="top-right"
-        reverseOrder={false}
-        />
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <SSInput label="Email Address" name="email" type="email" placeholder="name@example.com" register={register} error={errors.email} required icon="fi fi-rr-envelope" />
+              <div className="space-y-1">
+                <SSInput label="Password" name="password" type="password" placeholder="••••••••" register={register} error={errors.password} required icon="fi fi-rr-lock" />
+                <div className="flex justify-end">
+                  <Link to="/forgot-password" size-sm className="text-xs font-bold text-indigo-600 hover:text-indigo-500 transition-colors">Forgot Password?</Link>
+                </div>
+              </div>
 
+              <SSButton text="Sign In ✨" type="submit" isLoading={isBusy} className="w-full py-4 rounded-2xl text-lg font-bold shadow-xl shadow-indigo-500/20" />
+            </form>
+
+            <div className="my-8 flex items-center gap-4">
+              <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Or continue with</span>
+              <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+            </div>
+
+            <div className="flex justify-center">
+              <GoogleLogin onSuccess={handleGoogleLoginSuccess} onError={() => toast.error("Google Sign-In failed")} theme="filled_blue" shape="pill" />
+            </div>
+
+            <p className="mt-10 text-center text-slate-500 dark:text-gray-400 text-sm">
+              Don't have an account?{" "}
+              <Link to="/signup" className="font-bold text-indigo-600 hover:text-indigo-500 transition-colors">Create Account</Link>
+            </p>
+          </div>
+        </section>
+      </main>
+      <Toaster position="top-right" reverseOrder={false} />
     </div>
-        </div>
   );
 };
 
