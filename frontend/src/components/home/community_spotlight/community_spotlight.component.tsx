@@ -19,7 +19,7 @@ type SpotlightWriter = {
 
 const TOP_WRITERS_LIMIT = 3;
 
-const getBookmarkCount = (post: Post) => post.bookmarks?.length ?? 0;
+const getBookmarkCount = (post: Post) => post.bookmarksCount ?? 0;
 
 const getPostEngagementScore = (post: Post) =>
   (post.likesCount ?? 0) * 3 +
@@ -59,7 +59,53 @@ const CommunitySpotlightComponent = () => {
   const { data, isLoading, isError, refetch } = useGetLatestListsQuery(undefined);
   const navigate = useNavigate();
 
+  const topWriters = useMemo<SpotlightWriter[]>(() => {
+    const writers = new Map<string, Omit<SpotlightWriter, "engagementScore">>();
+
+    data?.posts?.forEach((post: Post) => {
+      if (!post.author) return;
+
+      const authorKey = post.author._id || post.author.email || post.author.name;
+      if (!authorKey) return;
+
+      const existingWriter = writers.get(authorKey);
+      const postScore = getPostEngagementScore(post);
+
+      if (!existingWriter) {
+        writers.set(authorKey, {
+          author: post.author,
+          storiesCount: 1,
+          likesCount: post.likesCount ?? 0,
+          commentsCount: post.commentsCount ?? 0,
+          viewsCount: post.viewsCount ?? 0,
+          bookmarksCount: getBookmarkCount(post),
+          topPost: post,
+        });
+        return;
+      }
+
+      existingWriter.storiesCount += 1;
+      existingWriter.likesCount += post.likesCount ?? 0;
+      existingWriter.commentsCount += post.commentsCount ?? 0;
+      existingWriter.viewsCount += post.viewsCount ?? 0;
+      existingWriter.bookmarksCount += getBookmarkCount(post);
+
+      if (postScore > getPostEngagementScore(existingWriter.topPost)) {
+        existingWriter.topPost = post;
+      }
+    });
+
+    return Array.from(writers.values())
+      .map((writer) => ({
+        ...writer,
+        engagementScore: getWriterEngagementScore(writer),
+      }))
+      .sort((a, b) => b.engagementScore - a.engagementScore)
+      .slice(0, TOP_WRITERS_LIMIT) as SpotlightWriter[];
+  }, [data?.posts]);
+
   if (isLoading) return <LoadingAnimation />;
+
   if (isError) {
     return (
       <section className="story-section">
@@ -110,9 +156,7 @@ const CommunitySpotlightComponent = () => {
               <button
                 key={writer.author._id || writer.author.email || writer.author.name}
                 type="button"
-                aria-label={`Read ${writer.topPost.title} by ${
-                  writer.author.name || "Unknown User"
-                }`}
+                aria-label={`Read ${writer.topPost.title} by ${writer.author.name || "Unknown User"}`}
                 onClick={() => navigate(`/post/${writer.topPost._id}`)}
                 className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/80 p-5 text-left shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-slate-700/60 dark:bg-slate-900/70 dark:hover:border-blue-400/50 dark:focus:ring-offset-slate-950"
               >
@@ -120,15 +164,9 @@ const CommunitySpotlightComponent = () => {
 
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-4">
-                    <div
-                      className={`rounded-full ring-4 ${style.ring} transition-transform duration-300 group-hover:scale-105`}
-                    >
-                      <SSProfile
-                        name={writer.author.name || "Unknown User"}
-                        size="h-14 w-14"
-                      />
+                    <div className={`rounded-full ring-4 ${style.ring} transition-transform duration-300 group-hover:scale-105`}>
+                      <SSProfile name={writer.author.name || "Unknown User"} size="h-14 w-14" />
                     </div>
-
                     <div className="min-w-0">
                       <p className="truncate text-lg font-bold text-slate-900 dark:text-gray-100">
                         {writer.author.name || "Unknown User"}
@@ -138,10 +176,7 @@ const CommunitySpotlightComponent = () => {
                       </p>
                     </div>
                   </div>
-
-                  <span
-                    className={`shrink-0 rounded-full px-3 py-1 text-sm font-black shadow-lg ${style.badge}`}
-                  >
+                  <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-black shadow-lg ${style.badge}`}>
                     #{rank}
                   </span>
                 </div>
@@ -157,36 +192,20 @@ const CommunitySpotlightComponent = () => {
 
                 <div className="mt-auto grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-xl bg-blue-50 px-3 py-3 dark:bg-blue-500/10">
-                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                      {formatMetric(writer.engagementScore)}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-gray-400">
-                      Score
-                    </p>
+                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{formatMetric(writer.engagementScore)}</p>
+                    <p className="text-xs text-slate-500 dark:text-gray-400">Score</p>
                   </div>
                   <div className="rounded-xl bg-violet-50 px-3 py-3 dark:bg-violet-500/10">
-                    <p className="text-lg font-bold text-violet-700 dark:text-violet-300">
-                      {formatMetric(writer.storiesCount)}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-gray-400">
-                      Stories
-                    </p>
+                    <p className="text-lg font-bold text-violet-700 dark:text-violet-300">{formatMetric(writer.storiesCount)}</p>
+                    <p className="text-xs text-slate-500 dark:text-gray-400">Stories</p>
                   </div>
                   <div className="rounded-xl bg-slate-100 px-3 py-3 dark:bg-slate-800">
-                    <p className="text-lg font-bold text-slate-800 dark:text-gray-200">
-                      {formatMetric(writer.likesCount)}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-gray-400">
-                      Likes
-                    </p>
+                    <p className="text-lg font-bold text-slate-800 dark:text-gray-200">{formatMetric(writer.likesCount)}</p>
+                    <p className="text-xs text-slate-500 dark:text-gray-400">Likes</p>
                   </div>
                   <div className="rounded-xl bg-slate-100 px-3 py-3 dark:bg-slate-800">
-                    <p className="text-lg font-bold text-slate-800 dark:text-gray-200">
-                      {formatMetric(writer.viewsCount)}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-gray-400">
-                      Views
-                    </p>
+                    <p className="text-lg font-bold text-slate-800 dark:text-gray-200">{formatMetric(writer.viewsCount)}</p>
+                    <p className="text-xs text-slate-500 dark:text-gray-400">Views</p>
                   </div>
                 </div>
 

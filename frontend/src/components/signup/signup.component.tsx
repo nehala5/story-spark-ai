@@ -1,4 +1,4 @@
-import { useForm, SubmitHandler } from "react-hook-form";
+﻿import { useForm, SubmitHandler } from "react-hook-form";
 import SSInput from "../ui-component/ss-input/ss-input";
 import SSButton from "../ui-component/ss-button/ss-button";
 import { useState, useEffect } from "react";
@@ -9,7 +9,7 @@ import {
   useVerifyOtpMutation,
 } from "../../redux/apis/otp.verify.api";
 import { useRegisterUserMutation } from "../../redux/apis/auth.api";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 interface IRegisterInfo {
   name: string;
@@ -84,7 +84,6 @@ const PASSWORD_REQUIREMENTS = [
 
 const SignUpComponent = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [emailVerify] = useEmailVerifyMutation();
   const [verifyOtp] = useVerifyOtpMutation();
   const [registerUser] = useRegisterUserMutation();
@@ -200,8 +199,7 @@ const SignUpComponent = () => {
         if (res.data.accessToken) {
           toast.success("OTP validated successfully!");
           storeUserInfo({ accessToken: res.data.accessToken });
-          const redirectPath = location.state && location.state.from ? location.state.from : "/";
-          navigate(redirectPath);
+          navigate("/");
         }
       } else {
         throw new Error("No verification token received");
@@ -247,25 +245,25 @@ const SignUpComponent = () => {
   };
 
   return (
-    <div className="min-h-[calc(100dvh-4.5rem)] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex items-center justify-center relative overflow-hidden px-4 py-8">
+    <div className="min-h-[calc(100dvh-4.5rem)] bg-slate-900 text-slate-100 flex items-center justify-center relative overflow-hidden px-4 py-8">
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="flex w-full max-w-md flex-col justify-center py-12 relative z-10">
+      <div className="flex w-full max-w-md flex-col justify-center py-12 relative z-10 px-4">
         <div className="sm:mx-auto sm:w-full sm:max-w-md mb-8">
           <h2 className="text-center text-4xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 drop-shadow-sm">
             STORY SPARK AI
           </h2>
         </div>
 
-        <div className="bg-slate-50 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 sm:p-10 shadow-2xl">
-          <h3 className="text-center text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-200">
+        <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 sm:p-8 shadow-2xl w-full min-w-0 overflow-hidden">
+          <h3 className="text-center text-2xl font-bold tracking-tight text-slate-200">
             {showOtpField ? "Verify Your Email" : "Create Account"}
           </h3>
 
           {!showOtpField && (
-            <p className="mt-2 mb-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-2 mb-6 text-center text-sm text-slate-400">
               Join StorySparkAI and begin your creative journey.
             </p>
           )}
@@ -276,7 +274,7 @@ const SignUpComponent = () => {
                 <div className="w-full border-t border-slate-700/50"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white dark:bg-slate-800/60 text-slate-800 dark:text-slate-400 font-semibold">
+                <span className="px-4 bg-slate-800/60 text-slate-400 font-semibold">
                   SIGN UP WITH EMAIL
                 </span>
               </div>
@@ -284,7 +282,7 @@ const SignUpComponent = () => {
           )}
 
           {!showOtpField ? (
-            <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+            <form className="space-y-5 w-full min-w-0 overflow-hidden" onSubmit={handleSubmit(onSubmit)}>
               <SSInput
                 label="Name"
                 name="name"
@@ -295,10 +293,10 @@ const SignUpComponent = () => {
                 autoComplete="name"
                 validation={{
                   required: "Name is required",
-                minLength: {
-                value: 2,
-                message: "Name must be at least 2 characters",
-                },
+                  minLength: {
+                    value: 2,
+                    message: "Name must be at least 2 characters",
+                  },
                   pattern: {
                     value: /^[A-Za-z0-9\s._]+$/,
                     message:
@@ -333,54 +331,62 @@ const SignUpComponent = () => {
               />
 
               {password?.length > 0 && (
-              <div className="space-y-3 -mt-2">
-                <div
-                  className="w-full h-2 bg-slate-700 rounded-full overflow-hidden"
-                  role="progressbar"
-                  aria-valuenow={passedChecks}
-                  aria-valuemin={0}
-                  aria-valuemax={PASSWORD_REQUIREMENTS.length}
-                  aria-label="Password strength"
-                >
+                <div className="space-y-3 -mt-2 min-w-0 overflow-hidden">
                   <div
-                    className={`h-full transition-all duration-300 ${barColor} ${barWidth}`}
-                  ></div>
+                    className="w-full h-2 bg-slate-700 rounded-full overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={passedChecks}
+                    aria-valuemin={0}
+                    aria-valuemax={PASSWORD_REQUIREMENTS.length}
+                    aria-label="Password strength"
+                  >
+                    <div
+                      className={`h-full transition-all duration-300 ${barColor} ${barWidth}`}
+                    ></div>
+                  </div>
+
+                  <p
+                    className={`text-sm font-medium truncate ${textColor}`}
+                    aria-live="polite"
+                  >
+                    {strengthLabel} Password
+                  </p>
+
+                  <ul className="space-y-1 text-xs min-w-0">
+                    {PASSWORD_REQUIREMENTS.map(({ key, label }) => {
+                      const met = passwordChecks[key];
+                      return (
+                        <li
+                          key={key}
+                          className={`${met ? "text-green-400" : "text-red-400"} truncate`}
+                          aria-label={`${label}: ${met ? "met" : "not met"}`}
+                        >
+                          <span aria-hidden="true">{met ? "✔️" : "❌"}</span>{" "}
+                          {label}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
-
-                <p
-                  className={`text-sm font-medium ${textColor}`}
-                  aria-live="polite"
-                >
-                  {strengthLabel} Password
-                </p>
-
-                <ul className="space-y-1 text-xs">
-                  {PASSWORD_REQUIREMENTS.map(({ key, label }) => {
-                    const met = passwordChecks[key];
-                    return (
-                      <li
-                        key={key}
-                        className={met ? "text-green-400" : "text-red-400"}
-                        aria-label={`${label}: ${met ? "met" : "not met"}`}
-                      >
-                        <span aria-hidden="true">{met ? "✅" : "❌"}</span>{" "}
-                        {label}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-)}
+              )}
 
               <SSInput
                 label="Confirm Password"
                 name="confirmPassword"
                 type="password"
                 placeholder="Confirm your password"
-                required={true}
+                required={!showOtpField}
                 icon="fi fi-rr-eye"
                 register={register}
                 autoComplete="new-password"
+                validation={{
+                  validate: (value) => {
+                    if (showOtpField) return true;
+                    if (!value) return "Confirm password is required";
+                    if (value !== password) return "Passwords do not match!";
+                    return true;
+                  }
+                }}
                 error={errors.confirmPassword}
               />
 

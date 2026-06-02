@@ -1,12 +1,34 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
 // Register the GSAP plugin
 gsap.registerPlugin(useGSAP);
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } 
+  },
+};
+
 const features = [
+// ... (rest of the features array remains the same)
   {
     title: "Infinite Variations",
     description: "Generate multiple unique branches of your story from a single starting prompt. Explore every creative possibility.",
@@ -192,50 +214,6 @@ const HeroSectionComponent = () => {
   const [stars, setStars] = useState<Array<{ id: number; x: number; y: number; size: number }>>([]);
   const nextStarId = useRef(1);
   const starTimers = useRef<number[]>([]);
-  const badgeRef = useRef<HTMLDivElement>(null);
-
-  // GSAP badge float + glow + animated border
-  useGSAP(() => {
-    const badge = badgeRef.current;
-    if (!badge) return;
-
-    // Side-to-side motion
-    gsap.fromTo(badge,
-      { x: -10 },
-      {
-        x: 10,
-        duration: 2,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: -1,
-      }
-    );
-
-    // Glowing box-shadow
-    gsap.to(badge, {
-      boxShadow: "0 0 16px rgba(59, 130, 246, 0.45), 0 0 40px rgba(139, 92, 246, 0.2)",
-      duration: 1.2,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1,
-    });
-
-    // Color-changing moving border effect
-    gsap.to(badge, {
-      borderColor: "rgba(244, 114, 182, 0.8)", // Pink
-      duration: 1,
-      repeat: -1,
-      yoyo: true,
-      ease: "none",
-      keyframes: {
-        "0%": { borderColor: "rgba(59, 130, 246, 0.8)" },  // Blue
-        "25%": { borderColor: "rgba(167, 139, 250, 0.8)" }, // Purple
-        "50%": { borderColor: "rgba(244, 114, 182, 0.8)" }, // Pink
-        "75%": { borderColor: "rgba(52, 211, 153, 0.8)" },  // Emerald
-        "100%": { borderColor: "rgba(59, 130, 246, 0.8)" }  // Blue
-      }
-    });
-  });
 
   const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -264,7 +242,12 @@ const HeroSectionComponent = () => {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-300">
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="relative min-h-screen bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-300"
+    >
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-sky-200/55 dark:bg-blue-600/20 rounded-full blur-[120px] pointer-events-none -z-10 transition-colors duration-300" />
       <div className="absolute top-[20%] right-[-10%] w-[500px] h-[500px] bg-fuchsia-200/45 dark:bg-purple-600/20 rounded-full blur-[120px] pointer-events-none -z-10 transition-colors duration-300" />
 
@@ -272,29 +255,42 @@ const HeroSectionComponent = () => {
 
       <div className="relative overflow-hidden" onMouseMove={handleMouseMove}>
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-20 text-center">
-          <div
-            ref={badgeRef}
-            className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/80 dark:bg-slate-800/60 border border-blue-400/30 dark:border-blue-500/30 backdrop-blur-md mb-8 shadow-sm cursor-pointer transition-all duration-300"
+          <motion.div
+            variants={itemVariants}
+            animate={{ 
+              x: [0, 5, 0, -5, 0],
+              boxShadow: [
+                "0 0 0px rgba(59, 130, 246, 0)",
+                "0 0 20px rgba(59, 130, 246, 0.3)",
+                "0 0 0px rgba(59, 130, 246, 0)"
+              ]
+            }}
+            transition={{ 
+              x: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+              boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+              delay: 0.5 // Start after entrance
+            }}
+            className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/80 dark:bg-slate-800/60 border border-blue-400/30 dark:border-blue-500/30 backdrop-blur-md mb-8 shadow-sm cursor-pointer"
           >
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
             </span>
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 tracking-wide">StorySparkAI v2.0 is live</span>
-          </div>
+          </motion.div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-8 leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+          <motion.h1 variants={itemVariants} className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-8 leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Ignite Your Imagination With <br className="hidden sm:block" />
             <span className="hero-gradient-text pb-2">
               AI-Driven Storytelling
             </span>
-          </h1>
+          </motion.h1>
 
-          <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400 leading-relaxed mb-10 transition-colors duration-300">
+          <motion.p variants={itemVariants} className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400 leading-relaxed mb-10 transition-colors duration-300">
             Create, edit, and generate engaging multiple story variations from a single prompt.
             Perfect for writers, creators, and enthusiasts exploring the future of fiction.
-          </p>
-          <div className="flex-grow flex flex-col items-center justify-center">
+          </motion.p>
+          <motion.div variants={itemVariants} className="flex-grow flex flex-col items-center justify-center">
             <div className="relative max-w-3xl w-full before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-r before:from-purple-500/20 before:via-indigo-500/20 before:to-blue-500/20 before:blur-xl before:animate-pulse">
               <div className="flex flex-wrap items-center justify-center gap-4">
                 <Link to="/stories">
@@ -311,7 +307,7 @@ const HeroSectionComponent = () => {
                 </Link>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
@@ -328,13 +324,13 @@ const HeroSectionComponent = () => {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <FeatureCard feature={feature} key={index} />
           ))}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
