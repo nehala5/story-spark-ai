@@ -15,6 +15,10 @@ import { postSearchFields } from "./post.constant";
 import { SortOrder } from "mongoose";
 import { GamificationService } from "../gamification/gamification.service";
 
+const MAX_SEARCH_TERM_LENGTH = 100;
+const escapeRegex = (str: string) =>
+  str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const createPost = async (payload: IPostPayload, token: ITokenPayload) => {
   const { email, role } = token;
   const user = await User.findOne({
@@ -63,6 +67,20 @@ const getPosts = async (
   ];
 
   if (searchTerm) {
+    const safeSearchTerm = escapeRegex(
+      searchTerm.trim().slice(0, MAX_SEARCH_TERM_LENGTH)
+    );
+
+    if (safeSearchTerm) {
+      andCondition.push({
+        $or: postSearchFields.map((field) => ({
+          [field]: {
+            $regex: safeSearchTerm,
+            $options: "i",
+          },
+        })),
+      });
+    }
     andCondition.push({
       $or: postSearchFields.map((field) => ({
         [field]: {
@@ -292,6 +310,10 @@ const getSinglePost = async (id: string, token?: ITokenPayload | null) => {
 };
 
 const getPostsByTag = async (tag: string, excludeId?: string) => {
+  if (!tag) {
+    return [];
+  }
+
   const query: any = { tag, isDeleted: { $ne: true } };
   if (excludeId) {
     query._id = { $ne: excludeId };
@@ -314,11 +336,11 @@ const toggleBookmark = async (postId: string, token: ITokenPayload) => {
     throw new ApiError(httpStatus.BAD_REQUEST, "User not found!");
   }
 
-  const post = await Post.findOne({ _id: postId, isDeleted: { $ne: true } });
-
-  if (!post) {
+  const postExists = await Post.exists({ _id: postId, isDeleted: { $ne: true } });
+  if (!postExists) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Post not found!");
   }
+  
   // Check bookmark status atomically via a DB query instead of loading the full document
   const isBookmarked = await Post.exists({ _id: postId, bookmarks: user._id });
 
@@ -337,7 +359,7 @@ const toggleBookmark = async (postId: string, token: ITokenPayload) => {
     );
     return { message: "Bookmark added", bookmarked: true };
   }
-}
+};
 
 const updatePost = async (
   postId: string,
@@ -496,8 +518,8 @@ export const PostService = {
   toggleBookmark,
   updatePost,
   deletePost,
-  remixStory,
-  translateStory,
+  remixStory,       // Exposed service for AI story variations
+  translateStory,   // Exposed service for localized modifications
   getGenres,
 };
 
