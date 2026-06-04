@@ -1,4 +1,4 @@
-﻿// //
+// //
 // import React, { useState } from "react";
 // import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 // import { MenuItem, menuItems } from "./dashboard.utils";
@@ -184,7 +184,11 @@ const DashboardLayout: React.FC = () => {
   const navigate = useNavigate();
 
   const user = getUserInfo();
-  const { data } = useGetProfileInfoQuery(undefined, { skip: !user });
+
+  // Single hook call with skip condition - must be called unconditionally
+  const { data: userProfile } = useGetProfileInfoQuery(undefined, {
+    skip: !user,
+  });
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -224,7 +228,7 @@ const DashboardLayout: React.FC = () => {
       <header className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between dark:bg-[#0a1020] dark:border-white/[0.06]">
         <div className="flex items-center gap-4">
           <Link to="/">
-              <button className="w-9 h-9 rounded-lg bg-white/[0.7] hover:bg-white transition text-slate-900 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] dark:text-white">
+            <button className="w-9 h-9 rounded-lg bg-white/[0.7] hover:bg-white transition text-slate-900 dark:bg-white/[0.05] dark:hover:bg-white/[0.1] dark:text-white">
               <i className="fas fa-arrow-left"></i>
             </button>
           </Link>
@@ -242,11 +246,16 @@ const DashboardLayout: React.FC = () => {
             </span>
           </button>
 
-         <img
-  className="h-9 w-9 rounded-full"
-  src={data?.profile?.avatar || "https://ui-avatars.com/api/?name=User"}
-  alt="profile"
-/>
+          <img
+            className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-white/10"
+            src={
+              userProfile?.profile?.avatar ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                user?.name || "User"
+              )}&background=random`
+            }
+            alt="profile"
+          />
         </div>
       </header>
 
