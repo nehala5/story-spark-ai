@@ -12,8 +12,11 @@ import httpStatus from "http-status";
 import cookieParser from "cookie-parser";
 import config from "./config";
 import { Routers } from "./router";
+import storyRoutes from "./routes/story.routes";
 import globalErrorHandler from "./app/middleware/global.error.handler";
 import { User } from "./app/modules/user/user.model";
+
+import { NewsletterSubscriber } from "./app/modules/newsletter/newsletter.model";
 
 const app: Application = express();
 app.set("trust proxy", 1);
@@ -26,8 +29,6 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
-
-
 
 const defaultCorsOrigins =
   process.env.NODE_ENV === "development"
@@ -58,8 +59,8 @@ app.use(
   })
 );
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 app.use((req, res, next) => {
@@ -85,6 +86,5 @@ app.use((req: Request, res: Response, _next: NextFunction) => {
 });
 
 app.use(globalErrorHandler);
-
 
 export default app;
