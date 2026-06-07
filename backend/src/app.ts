@@ -3,10 +3,8 @@ import express, {
   NextFunction,
   Request,
   Response,
-  RequestHandler,
 } from "express";
 import helmet from "helmet";
-import compression from "compression";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
 import httpStatus from "http-status";
@@ -15,29 +13,24 @@ import cookieParser from "cookie-parser";
 import config from "./config";
 import { Routers } from "./router";
 import globalErrorHandler from "./app/middleware/global.error.handler";
-import requestId from "./app/middleware/request.id";
-import httpLogger from "./app/middleware/http.logger";
 import { User } from "./app/modules/user/user.model";
 
 const app: Application = express();
 app.set("trust proxy", 1);
 app.use(helmet());
-app.use(requestId);
-app.use(httpLogger);
-app.use(compression());
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: "Too many requests, please try again later.",
 });
-app.use(limiter as unknown as RequestHandler);
 
-const defaultCorsOrigins = [
-  "http://localhost:4001",
-  "http://localhost:4002",
-  "https://storysparkai-five.vercel.app",
-  "https://storysparkai.vercel.app",
-];
+app.use(limiter);
+
+const defaultCorsOrigins =
+  process.env.NODE_ENV === "development"
+  ? ["http://localhost:4001", "http://localhost:4002"]
+  : [];
 
 const corsOrigins =
   config.cors_origins && config.cors_origins.length > 0
@@ -47,6 +40,10 @@ const corsOrigins =
 app.use(
   cors({
     origin: (origin, callback) => {
+      if (!origin && process.env.NODE_ENV === 'production') {
+        return callback(new Error('Origin header required in production'));
+      }
+
       if (!origin || corsOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -59,9 +56,16 @@ app.use(
   })
 );
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser() as unknown as RequestHandler);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+
+app.use((req, res, next) => {
+  if (req.method === "GET" && /^\/api\/story\/[a-f0-9]{24}\/character-network$/i.test(req.path)) {
+    req.url = req.url.replace(/^\/api\/story\//, "/api/v1/story/");
+  }
+  next();
+});
 
 app.use("/api/v1", Routers);
 
@@ -79,6 +83,5 @@ app.use((req: Request, res: Response, _next: NextFunction) => {
 });
 
 app.use(globalErrorHandler);
-
 
 export default app;
