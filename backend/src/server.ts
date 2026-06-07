@@ -15,6 +15,7 @@ if (config.dns_servers?.length) {
 }
 
 if (config.disable_logs) {
+  // Silence only verbose channels; keep warn/error so failures stay visible in logs.
   const noop = () => undefined;
   console.log = noop;
   console.info = noop;
