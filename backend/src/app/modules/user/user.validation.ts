@@ -13,15 +13,11 @@ const register = z.object({
     email: z.string({ required_error: "Email is required" }),
     name: z
       .string({ required_error: "Name is required" })
-      .min(3, "Name must be at least 3 characters long"),
+      .min(2, "Name must be at least 2 characters long"),
     password: passwordSchema,
-    confirmPassword: z.string({ required_error: "Confirm password is required" }),
     verificationToken: z
       .string({ required_error: "Verification token is required" })
       .min(1, "Verification token is required"),
-  }).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
   }),
 });
 
@@ -50,17 +46,17 @@ const resetPassword = z.object({
 const updateUser = z.object({
   body: z
     .object({
-      name: z.string().trim().min(1, "Full Name cannot be empty.").optional(),
+      name: z.string().trim().min(1, "Full Name cannot be empty.").max(100).optional(),
       profile: z
         .object({
-          avatar: z.string().optional(),
-          bio: z.string().optional(),
+          avatar: z.string().max(2000).optional(),
+          bio: z.string().max(1000, "Bio cannot exceed 1000 characters").optional(),
           social: z
             .object({
-              facebook: z.string().optional(),
-              twitter: z.string().optional(),
-              linkedin: z.string().optional(),
-              instagram: z.string().optional(),
+              facebook: z.string().max(200).optional(),
+              twitter: z.string().max(200).optional(),
+              linkedin: z.string().max(200).optional(),
+              instagram: z.string().max(200).optional(),
             })
             .partial()
             .strict()
@@ -74,10 +70,18 @@ const updateUser = z.object({
     .strict(),
 });
 
+const changePassword = z.object({
+  body: z.object({
+    oldPassword: z.string({ required_error: "Old password is required" }),
+    newPassword: passwordSchema,
+  }),
+});
+
 export const UserValidator = {
   register,
   login,
   forgotPassword,
   resetPassword,
   updateUser,
+  changePassword,
 };
