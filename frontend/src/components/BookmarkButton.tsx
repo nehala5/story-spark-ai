@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { getUserInfo } from "../services/auth.service";
@@ -22,10 +22,28 @@ const BookmarkButton: React.FC<BookmarkButtonProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   // Bookmark state comes from the per-user status endpoint (single source of truth).
-  const { data: statusData } = useCheckBookmarkStatusQuery(storyId, {
-    skip: !currentUser?.userId || !storyId,
-  });
+ const {
+  data: statusData,
+  isLoading: isStatusLoading,
+  error: statusError,
+} = useCheckBookmarkStatusQuery(storyId, {
+  skip: !currentUser?.userId || !storyId,
+});
   const isCurrentlyBookmarked = Boolean(statusData?.isBookmarked);
+
+useEffect(() => {
+  if (statusError) {
+    const message =
+      (statusError as { data?: { message?: string } })?.data?.message ||
+      "Failed to load bookmark status";
+
+    toast.error(message);
+  }
+}, [statusError]);
+
+if (!storyId) {
+  return null;
+}
 
   const handleBookmark = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -53,10 +71,20 @@ const BookmarkButton: React.FC<BookmarkButtonProps> = ({
     }
   };
 
+  if (isStatusLoading) {
+  return (
+    <button
+      disabled
+      className={`!rounded-button border px-3 py-1 flex items-center justify-center animate-pulse ${className}`}
+    >
+      <i className="far fa-bookmark"></i>
+    </button>
+  );
+}
   return (
     <button
       onClick={handleBookmark}
-      disabled={isLoading}
+      disabled={isLoading || isStatusLoading}
       title={isCurrentlyBookmarked ? "Remove bookmark" : "Save story"}
       aria-label={isCurrentlyBookmarked ? "Remove bookmark" : "Save story"}
       className={`!rounded-button cursor-pointer transition-all duration-300 border px-3 py-1 flex items-center justify-center hover:scale-105 active:scale-95 ${
