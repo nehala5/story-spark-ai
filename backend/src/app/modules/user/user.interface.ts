@@ -11,6 +11,7 @@ export interface IUser {
   role: string;
   status: string;
   subscriptionType: SubscriptionType;
+  subscriptionExpiry?: Date;
   postsCount: number;
   followers: Types.ObjectId[];
   following: Types.ObjectId[];

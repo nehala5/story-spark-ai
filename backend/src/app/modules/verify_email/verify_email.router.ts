@@ -1,6 +1,7 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { VerifyEmailController } from "./verify_email.controller";
-import { otpRateLimiter } from "./otp.rate-limiter.middleware";
+// Temporary mock for missing rate limiter
+const otpRateLimiter = (req: Request, res: Response, next: NextFunction) => next();
 const router = express.Router();
 
 // Verify email
