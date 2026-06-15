@@ -1,7 +1,25 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GEMINI_MODEL, CLAUDE_MODEL, OPENAI_MODEL, getOpenAIClient, getAnthropicClient } from "../../../services/ai.service";
+import { GEMINI_MODEL } from "../../../services/ai.service";
+import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+
+const getOpenAIClient = () => {
+  const key = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;
+  if (!key) {
+    throw new Error("OpenAI API key is required but was not provided.");
+  }
+  return new OpenAI({ apiKey: key });
+};
+
+const getAnthropicClient = () => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    throw new Error("Anthropic API key is required but was not provided.");
+  }
+  return new Anthropic({ apiKey: key });
+};
 
 export const enhancePromptWithGemini = async (
   prompt: string,
@@ -57,7 +75,7 @@ Prompt: ${prompt}`;
 
   const response = await client.chat.completions.create(
     {
-      model: OPENAI_MODEL,
+      model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: metaPrompt }],
       max_tokens: 1000,
     },
@@ -80,7 +98,7 @@ Prompt: ${prompt}`;
 
   const response = await client.messages.create(
     {
-      model: CLAUDE_MODEL,
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 1000,
       messages: [{ role: "user", content: metaPrompt }],
     },

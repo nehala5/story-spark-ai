@@ -93,57 +93,51 @@ export default function StoryWorldMap({ story, title, onClose }: Props) {
       .style("cursor", "pointer")
       .call(
         d3.drag<SVGGElement, SimNode>()
-          .on("start", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, n: SimNode) => {
-          .on("start", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, node: SimNode) => {
+          .on("start", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, d: SimNode) => {
             if (!event.active) simulation.alphaTarget(0.3).restart();
-            n.fx = n.x;
-            n.fy = n.y;
+            d.fx = d.x;
+            d.fy = d.y;
           })
-          .on("drag", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, n: SimNode) => {
-            n.fx = event.x;
-            n.fy = event.y;
+          .on("drag", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, d: SimNode) => {
+            d.fx = event.x;
+            d.fy = event.y;
           })
-          .on("end", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, n: SimNode) => {
-          .on("drag", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, node: SimNode) => {
-            node.fx = event.x;
-            node.fy = event.y;
-          })
-          .on("end", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, node: SimNode) => {
+          .on("end", (event: d3.D3DragEvent<SVGGElement, SimNode, SimNode>, d: SimNode) => {
             if (!event.active) simulation.alphaTarget(0);
-            n.fx = null;
-            n.fy = null;
+            d.fx = null;
+            d.fy = null;
           })
       );
 
     node.append("circle")
-      .attr("r", (n: SimNode) => n.type === "location" ? 28 : 20)
-      .attr("fill", (n: SimNode) => n.type === "location"
+      .attr("r", (d: SimNode) => d.type === "location" ? 28 : 20)
+      .attr("fill", (d: SimNode) => d.type === "location"
         ? "rgba(99,102,241,0.2)"
         : "rgba(236,72,153,0.2)")
-      .attr("stroke", (n: SimNode) => n.type === "location" ? "#6366f1" : "#ec4899")
+      .attr("stroke", (d: SimNode) => d.type === "location" ? "#6366f1" : "#ec4899")
       .attr("stroke-width", 2);
 
     node.append("text")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "central")
-      .attr("font-size", (n: SimNode) => n.type === "location" ? "18px" : "14px")
-      .text((n: SimNode) => n.type === "location" ? "📍" : "👤");
+      .attr("font-size", (d: SimNode) => d.type === "location" ? "18px" : "14px")
+      .text((d: SimNode) => d.type === "location" ? "📍" : "👤");
 
     node.append("text")
       .attr("text-anchor", "middle")
-      .attr("y", (n: SimNode) => n.type === "location" ? 40 : 32)
-      .attr("fill", (n: SimNode) => n.type === "location" ? "#a5b4fc" : "#f9a8d4")
+      .attr("y", (d: SimNode) => d.type === "location" ? 40 : 32)
+      .attr("fill", (d: SimNode) => d.type === "location" ? "#a5b4fc" : "#f9a8d4")
       .attr("font-size", "11px")
       .attr("font-weight", "600")
-      .text((n: SimNode) => n.name);
+      .text((d: SimNode) => d.name);
 
     simulation.on("tick", () => {
       link
-        .attr("x1", (l: SimLink) => getNodePosition(l.source, "x"))
-        .attr("y1", (l: SimLink) => getNodePosition(l.source, "y"))
-        .attr("x2", (l: SimLink) => getNodePosition(l.target, "x"))
-        .attr("y2", (l: SimLink) => getNodePosition(l.target, "y"));
-      node.attr("transform", (n: SimNode) => `translate(${n.x ?? 0},${n.y ?? 0})`);
+        .attr("x1", (d: SimLink) => getNodePosition(d.source, "x"))
+        .attr("y1", (d: SimLink) => getNodePosition(d.source, "y"))
+        .attr("x2", (d: SimLink) => getNodePosition(d.target, "x"))
+        .attr("y2", (d: SimLink) => getNodePosition(d.target, "y"));
+      node.attr("transform", (d: SimNode) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
     return () => {
