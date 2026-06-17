@@ -36,6 +36,12 @@ const SSInput = <T extends FieldValues>({
 }: SSInputProps<T>) => {
   const [showPassword, setShowPassword] = useState(false);
 
+
+
+
+
+
+  const inputType = type === "password" ? (showLocalPassword ? "text" : "password") : type;
   const inputType =
     type === "password" ? (showPassword ? "text" : "password") : type;
 
@@ -61,6 +67,15 @@ const SSInput = <T extends FieldValues>({
           </span>
         )}
 
+        <input
+  type={inputType}
+  id={name}
+  className={`block w-full max-w-full box-border pl-8 ${
+    type === "password" ? "pr-0" : "pr-0"
+  } py-1.5 text-base text-gray-900 dark:text-gray-200 bg-white dark:bg-slate-800 border rounded-md sm:text-sm ${
+    error
+      ? "border-red-500"
+      : "border-gray-300 focus:outline-indigo-600"
        <input
   type={inputType}
   id={name}
@@ -73,6 +88,37 @@ const SSInput = <T extends FieldValues>({
   autoComplete={autoComplete}
   {...register(name, validation)}
 />
+        {type === "password" && (
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+
+          <button
+            type="button"
+            onClick={() => setShowLocalPassword(!showLocalPassword)}
+
+            className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none"
+            aria-label={showLocalPassword ? "Hide password" : "Show password"}
+
+
+
+          >
+            <i className={showLocalPassword ? "fi fi-rr-eye" : "fi fi-rr-eye-crossed"}></i>
+          </button>
+        )}
+    className="absolute inset-y-0 right-2 flex items-center text-gray-500"
+          type={inputType}
+          id={name}
+          className={`w-full min-w-0 max-w-full box-border pl-8 pr-10 py-1.5 text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 bg-white dark:bg-slate-800 border rounded-md sm:text-sm ${
+            error
+              ? "border-red-500 outline-red-500"
+              : "border-gray-300 focus:outline-indigo-600"
+          }`}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          autoFocus={autoFocus}
+          {...register(name, validation)}
+        />
 
         <input
   type={inputType}
