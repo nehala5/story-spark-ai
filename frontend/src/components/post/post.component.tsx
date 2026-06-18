@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import ExploreViewListComponent from "./post.view.list.component";
 import ExploreFeatureComponent from "./post.feature.component";
 import { Link } from "react-router-dom";
-import { useGetPostListsQuery } from "../../redux/apis/post.api";
+import { useGetPostListsQuery, useGetGenresQuery } from "../../redux/apis/post.api";
 import type { Post } from "../../models/post";
 import { useDebounced } from "../../hooks/global";
 import PaginationComponent from "../pagination/pagination.component";
 
-const ExploreComponent = () => {
+export const ExploreComponent = () => {
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<string>("desc");
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -25,7 +25,7 @@ const ExploreComponent = () => {
 
   const debounceTerm = useDebounced({
     searchQuery: searchTerm,
-    daley: 600,
+    delay: 600,
   });
 
   if (debounceTerm) {
@@ -37,6 +37,7 @@ const ExploreComponent = () => {
   }
 
   const { data, isLoading } = useGetPostListsQuery({ ...query });
+  const { data: genres } = useGetGenresQuery();
 
   const filteredPosts = data?.posts || [];
 
@@ -69,7 +70,7 @@ const ExploreComponent = () => {
     ),
   ).slice(0, 8);
 
-  const availableGenres = ["Fantasy", "Science Fiction", "Mystery", "Romance"];
+  const availableGenres = genres ?? [];
 
   return (
     <div className="pt-0 min-h-screen bg-white text-slate-900 relative overflow-hidden transition-colors duration-300 dark:bg-[#0b1329] dark:text-white">
@@ -106,19 +107,24 @@ const ExploreComponent = () => {
         {/* Main Layout */}
         <div className="flex flex-col md:flex-row gap-8">
           {/* Sidebar */}
-          <div className="w-full md:w-64 flex-shrink-0">
+          <div className="w-full md:w-64 md:min-w-64 flex-shrink-0">
             <div className="sticky top-4 bg-gray-50 border border-gray-200 text-slate-900 backdrop-blur-xl rounded-2xl p-6 shadow-xl z-10 transition-colors duration-300 dark:bg-slate-900/50 dark:border-none dark:text-white">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                   Filters
                 </h3>
 
-                <button
-                  onClick={resetAllStates}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors dark:text-blue-400 dark:hover:text-blue-300"
-                >
-                  Reset
-                </button>
+                {(searchTerm ||
+                  selectedTags.length > 0 ||
+                  sortBy !== "createdAt" ||
+                  sortOrder !== "desc") && (
+                  <button
+                    onClick={resetAllStates}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
 
               <div className="space-y-6">
@@ -210,8 +216,8 @@ const ExploreComponent = () => {
           {/* Content */}
           <div className="flex-1 flex flex-col min-h-[70vh]">
             <div className={`${featuredPost ? "mb-6" : ""}`}>
-              <div className="flex justify-between items-center">
-                <div className="flex space-x-4 items-center overflow-x-auto">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex flex-wrap gap-4 items-center">
                   <h2
                     onClick={() => setFeaturedPost(false)}
                     className={`text-3xl font-extrabold mb-6 cursor-pointer transition-all duration-300 ${
@@ -255,6 +261,58 @@ const ExploreComponent = () => {
 
               {featuredPost && <ExploreFeatureComponent />}
             </div>
+
+            {/* Active Filters Summary */}
+            {(searchTerm.trim() !== "" || selectedTags.length > 0) && (
+              <div className="mb-6 flex flex-wrap items-center gap-3 animate-fade-in">
+                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  Active Filters:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {searchTerm.trim() !== "" && (
+                    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 text-xs font-medium dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50 shadow-sm transition-all hover:bg-blue-100 dark:hover:bg-blue-900/50">
+                      <i className="fas fa-search text-[10px] opacity-70"></i>
+                      Search: "{searchTerm}"
+                      <button
+                        onClick={() => {
+                          setSearchTerm("");
+                          setPage(1);
+                        }}
+                        className="ml-1 hover:text-blue-900 dark:hover:text-blue-100 transition-colors cursor-pointer"
+                        aria-label="Remove search filter"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </span>
+                  )}
+
+                  {selectedTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-medium dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800/50 shadow-sm transition-all hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+                    >
+                      <i className="fas fa-tag text-[10px] opacity-70"></i>
+                      {tag.startsWith("#") ? tag : `#${tag}`}
+                      <button
+                        onClick={() => handleTagClick(tag)}
+                        className="ml-1 hover:text-indigo-900 dark:hover:text-indigo-100 transition-colors cursor-pointer"
+                        aria-label={`Remove ${tag} filter`}
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </span>
+                  ))}
+
+                  <button
+                    onClick={resetAllStates}
+                    className="ml-2 text-xs font-bold text-blue-600 hover:text-blue-500 transition-colors dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 group cursor-pointer"
+                  >
+                    Clear All
+                    <i className="fas fa-trash-can text-[10px] group-hover:rotate-12 transition-transform"></i>
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="flex-grow">
               {!isLoading && filteredPosts.length === 0 ? (
