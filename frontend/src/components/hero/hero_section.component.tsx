@@ -24,12 +24,16 @@ const itemVariants: any = {
   visible: { 
     opacity: 1, 
     y: 0, 
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } 
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } as const 
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
   },
 };
 
 const features = [
-// ... (rest of the features array remains the same)
+  // ... (rest of the features array remains the same)
   {
     title: "Infinite Variations",
     description: "Generate multiple unique branches of your story from a single starting prompt. Explore every creative possibility.",
@@ -369,7 +373,7 @@ const HeroSectionComponent = () => {
               />
             ))}
           </div>
-          </div>
+        </div>
 
 
             <motion.div
