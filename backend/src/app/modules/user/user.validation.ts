@@ -8,6 +8,7 @@ const passwordSchema = z
   .regex(/[0-9]/, "Password must contain at least one number")
   .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
 
+
   const register = z.object({
     body: z.object({
       email: z.string({ required_error: "Email is required" }).email("Invalid email address"),
@@ -44,7 +45,7 @@ const resetPassword = z.object({
 const updateUser = z.object({
   body: z
     .object({
-      name: z.string().trim().min(1, "Full Name cannot be empty.").max(100).optional(),
+      name: z.string().trim().min(5, "Name must be at least 5 characters long").max(100).optional(),
       profile: z
         .object({
           avatar: z.string().max(2000).optional(),
