@@ -18,7 +18,7 @@ const app: Application = express();
 app.set("trust proxy", 1);
 app.use(helmet());
 
-const defaultCorsOrigins =  
+const defaultCorsOrigins =
   process.env.NODE_ENV === "development"
     ? ["http://localhost:4001", "http://localhost:4002"]
     : [
@@ -71,8 +71,8 @@ app.use((req, res, next) => {
 });
 
 // Primary API Router Matrix Engagement
-app.use("/api/v1", Routers);
 app.use("/api/v1/leaderboard", leaderboardRoute);
+app.use("/api/v1", Routers);
 
 // ─── 2. FIXED: REFUSED TO SHORT-CIRCUIT, DELEGATING 404 TO NEXT() ───
 app.use((req: Request, res: Response, next: NextFunction) => {
