@@ -110,7 +110,7 @@ const ForgotPasswordComponent = () => {
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setInterval(() => {
-      setCooldown((prev) => prev - 1);
+      setCooldown((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
