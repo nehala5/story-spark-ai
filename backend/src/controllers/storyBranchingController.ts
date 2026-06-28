@@ -92,21 +92,23 @@ Task:
         }
       }
 
-      if (!parsed.choices || parsed.choices.length === 0) {
-        parsed.choices = [
+      let finalChoices = parsed.choices;
+      if (!finalChoices || finalChoices.length === 0) {
+        finalChoices = [
           "Explore the surroundings",
           "Search for another way",
           "Wait and see what happens",
         ];
       } else if (parsed.choices.length < 3) {
-        const tempChoices = [...parsed.choices];
-        while (tempChoices.length < 3) {
-          tempChoices.push(`Option ${tempChoices.length + 1}`);
+        const padded = [...parsed.choices];
+        while (padded.length < 3) {
+          padded.push(`Option ${padded.length + 1}`);
         }
-        parsed.choices = tempChoices;
+        parsed.choices = padded;
       } else if (parsed.choices.length > 3) {
         parsed.choices = parsed.choices.slice(0, 3);
       }
+      parsed.choices = finalChoices;
 
       sendResponse(res, {
         success: true,
