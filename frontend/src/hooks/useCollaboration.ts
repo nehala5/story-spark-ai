@@ -137,7 +137,7 @@ export function useCollaboration({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [roomId]);
+  }, [roomId, onError]);
 
   const addText = useCallback(
     (text: string) => {
