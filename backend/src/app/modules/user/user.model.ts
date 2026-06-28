@@ -61,16 +61,22 @@ export const UserSchema: Schema<IUser> = new Schema<IUser, UserModel>(
 
 UserSchema.pre("save", async function (next) {
   const user = this;
-  
-  // Only hash password if it exists and is not empty (for password-based auth)
-  // Skip for Google OAuth users who don't have passwords
+
+  // Only hash the password when it has been newly set or explicitly changed.
+  // Without this guard, every .save() (e.g. incrementing postsCount) would
+  // re-hash the already-hashed value, permanently corrupting the password.
+  if (!user.isModified("password")) {
+    return next();
+  }
+
+  // Hash password only if it exists and is not empty (skip for Google OAuth users)
   if (user.password && user.password.trim() !== "") {
     user.password = await bcrypt.hash(
       user.password,
       Number(config.bcrypt_salt_rounds)
     );
   }
-  
+
   next();
 });
 
