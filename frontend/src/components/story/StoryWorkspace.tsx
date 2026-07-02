@@ -9,6 +9,7 @@ import ChapterSidebar from "./ChapterSidebar";
 import StoryViewer from "./StoryViewer";
 import ContinueStoryButton from "./ContinueStoryButton";
 import CharacterNetwork from "../CharacterNetwork";
+import WritingGoalCard from "../goals/WritingGoalCard";
 
 import {
   getSafeFileName,
@@ -225,12 +226,24 @@ const StoryWorkspace = () => {
         </div>
 
         {workspaceMode === "editor" ? (
-          <>
-            <StoryViewer
-              chapters={currentStory.chapters}
-              storyId={currentStory.id}
-              truncated={currentStory.truncated}
-            />
+  <>
+    <div className="p-4 border-b border-zinc-800">
+      <WritingGoalCard
+        goalType="daily"
+        targetWords={1000}
+        wordsWritten={650}
+        targetStories={3}
+        storiesWritten={2}
+        targetPrompts={10}
+        promptsCompleted={6}
+      />
+    </div>
+
+    <StoryViewer
+      chapters={currentStory.chapters}
+      storyId={currentStory.id}
+      truncated={currentStory.truncated}
+    />
 
             <div className="p-6 border-t border-zinc-800">
               <ContinueStoryButton />
