@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Security middleware to prevent prompt injection and jailbreaks.
  * Improvements:
  * - Input normalization before pattern matching
@@ -7,11 +7,12 @@
  * - Content moderation on both input and output
  * - Improved output validation
  */
+import { assertContentSafe } from "./contentModeration";
 
 const FORBIDDEN_PATTERNS: RegExp[] = [
   // Direct instruction override attempts
-  /ignore\s+(previous|all|prior|above|any)\s+(instructions?|prompts?|context|rules?|constraints?)/i,
-  /disregard\s+(previous|all|prior|above|any)\s+(instructions?|prompts?|context|rules?|constraints?)/i,
+  /ignore\s+(?:.*?\s+)?(?:instructions?|prompts?|context|rules?|constraints?)/i,
+  /disregard\s+(?:.*?\s+)?(?:instructions?|prompts?|context|rules?|constraints?)/i,
   /forget\s+(everything|all|previous|prior|above|your\s+instructions?)/i,
   /override\s+(your\s+)?(instructions?|rules?|constraints?|programming|training)/i,
   /bypass\s+(your\s+)?(instructions?|rules?|constraints?|filter|safety|security)/i,
@@ -28,9 +29,9 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
   /do\s+anything\s+now/i,
   /dan\s+mode/i,
   /developer\s+mode/i,
-  /pretend\s+(you\s+are|to\s+be)\s+(a\s+)?(different|unrestricted|unfiltered|evil|bad)/i,
-  /act\s+as\s+(if\s+you\s+are\s+)?(a\s+)?(different|unrestricted|unfiltered|evil|bad|another)/i,
-  /you\s+are\s+now\s+(a\s+)?(different|unrestricted|unfiltered|evil|bad|another)/i,
+  /pretend\s+(you\s+are|to\s+be)\s+(a\s+)?(?:different|unrestricted|unfiltered|evil|bad|another|developer|system)/i,
+  /act\s+as\s+(if\s+you\s+are\s+)?(a\s+)?(?:different|unrestricted|unfiltered|evil|bad|another|developer|system)/i,
+  /you\s+are\s+now\s+(a\s+)?(?:different|unrestricted|unfiltered|evil|bad|another|developer|system)/i,
 
   // Roleplay-style attacks
   /in\s+this\s+(scenario|story|roleplay|game|simulation)\s+.{0,50}(no\s+rules?|no\s+restrictions?|anything\s+goes)/i,
@@ -55,26 +56,34 @@ const normalizeInput = (input: string): string => {
     .replace(/\s+/g, " ") // Collapse whitespace
     .trim();
 };
+/**
+ * Strip markdown code fences (e.g. ```json ... ```) from raw AI text
+ * before attempting JSON.parse.
+ */
+export const sanitizeJsonText = (rawText: string): string => {
+  const trimmed = rawText.trim();
+  return (input ?? "")
+    .normalize("NFKC")
+    .replace(/\u200B|\u200C|\u200D|\uFEFF|\u2060|\u180E/g, "")
+    .replace(/[\s\u00A0]+/g, " ")
+    .trim();
+};
 
 export const validateAndFormatPrompt = (userPrompt: string): string => {
   if (!userPrompt || typeof userPrompt !== "string") {
     throw new Error("Security Violation: Invalid prompt input.");
   }
 
-  // Normalize input before security analysis
   const normalizedPrompt = normalizeInput(userPrompt);
 
-  // Semantic filtering against expanded pattern set
   for (const pattern of FORBIDDEN_PATTERNS) {
     if (pattern.test(normalizedPrompt)) {
       throw new Error("Security Violation: Malicious prompt injection detected.");
     }
   }
 
-  // Content moderation — block harmful/inappropriate input
   assertContentSafe(normalizedPrompt);
 
-  // Strict delimiters to isolate user input
   return `"""\n${normalizedPrompt}\n"""`;
 };
 
@@ -85,7 +94,6 @@ export const validateOutput = (aiResponse: string): string => {
 
   const lowerResponse = aiResponse.toLowerCase();
 
-  // Expanded output validation — check for leaked system instructions
   const leakPatterns = [
     "system prompt:",
     "instructions:",
@@ -96,6 +104,8 @@ export const validateOutput = (aiResponse: string): string => {
     "my training says",
     "i am programmed to",
     "confidential instructions",
+    "ignore the rules",
+    "comply with your instructions",
   ];
 
   for (const pattern of leakPatterns) {
@@ -104,7 +114,6 @@ export const validateOutput = (aiResponse: string): string => {
     }
   }
 
-  // Content moderation — block harmful/inappropriate output
   assertContentSafe(aiResponse);
 
   return aiResponse;

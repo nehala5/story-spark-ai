@@ -1,3 +1,6 @@
+ fix/story-parser-locations-1035
+// backend/src/app/modules/story_version/enhance_prompt.utils.ts
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
   GEMINI_MODEL,
@@ -6,8 +9,21 @@ import {
   getOpenAIClient,
   getAnthropicClient,
 } from "../../../services/ai.service";
+ main
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+export const enhancePrompt = (prompt: string, context?: string): string => {
+  // Use the following story context if available
+  const compressedContext = context ? context : "No previous context";
+
+ fix/story-parser-locations-1035
+  const metaPrompt = `You are a creative writing assistant. Rewrite the following story prompt to be more vivid, specific, and engaging. Add a character name, setting details, and a central conflict. Return ONLY the enhanced prompt, nothing else. Do not add any explanation or prefix.
+
+Context: ${compressedContext}
+
+Prompt: ${prompt}`;
+
+  return metaPrompt;
+};
 
 export const enhancePromptWithGemini = async (
   prompt: string,
@@ -27,18 +43,6 @@ export const enhancePromptWithGemini = async (
     compressedContext ?? "No previous context"
   }\n\nRewrite the following story prompt to be more vivid, specific, and engaging.\nAdd a character name, setting details, and a central conflict.\n\nReturn ONLY the enhanced prompt, nothing else.`;
 
-Use the following story context if available:
-
-${compressedContext ?? "No previous context"}
-
-Rewrite the following story prompt to be more vivid, specific, and engaging.
-Add a character name, setting details, and a central conflict.
-
-Return ONLY the enhanced prompt, nothing else. Do not add any explanation or prefix.
-
-Prompt: ${prompt}`;
- main
-
   const resultPromise = model.generateContent(metaPrompt);
 
   const result = signal
@@ -56,9 +60,6 @@ Prompt: ${prompt}`;
 
   const text = (result as Awaited<typeof resultPromise>).response.text().trim();
 
-
-
- main
   return text;
 };
 
@@ -68,9 +69,6 @@ export const enhancePromptWithOpenAI = async (
 ): Promise<string> => {
   const client = getOpenAIClient();
 
-  const metaPrompt = `You are a creative writing assistant. Rewrite the following story prompt to be more vivid, specific, and engaging. Add a character name, setting details, and a central conflict. Return ONLY the enhanced prompt, nothing else. Do not add any explanation or prefix.\n\nPrompt: ${prompt}`;
-
-
   const metaPrompt = `You are a creative writing assistant.
 
 Rewrite the following story prompt to be more vivid, specific, and engaging.
@@ -79,7 +77,6 @@ Add a character name, setting details, and a central conflict.
 Return ONLY the enhanced prompt, nothing else. Do not add any explanation or prefix.
 
 Prompt: ${prompt}`;
- main
 
   const response = await client.chat.completions.create(
     {
@@ -105,9 +102,6 @@ export const enhancePromptWithAnthropic = async (
 ): Promise<string> => {
   const client = getAnthropicClient();
 
-  const metaPrompt = `You are a creative writing assistant. Rewrite the following story prompt to be more vivid, specific, and engaging. Add a character name, setting details, and a central conflict. Return ONLY the enhanced prompt, nothing else. Do not add any explanation or prefix.\n\nPrompt: ${prompt}`;
-
-
   const metaPrompt = `You are a creative writing assistant.
 
 Rewrite the following story prompt to be more vivid, specific, and engaging.
@@ -116,7 +110,6 @@ Add a character name, setting details, and a central conflict.
 Return ONLY the enhanced prompt, nothing else. Do not add any explanation or prefix.
 
 Prompt: ${prompt}`;
- main
 
   const response = await client.messages.create(
     {
@@ -136,7 +129,4 @@ Prompt: ${prompt}`;
 
   return text;
 };
-
-
-
-main
+ main

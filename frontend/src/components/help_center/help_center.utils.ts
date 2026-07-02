@@ -99,7 +99,7 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     title: "Account & Billing",
     description: "Manage your profile settings, subscriptions, and security options.",
     icon: "fa-solid fa-user-gear",
-    sectionId: "account-billing-section",
+    sectionId: "account-billing-section", 
     keywords: ["profile", "password", "billing", "subscription", "plan"]
   },
   {
@@ -152,3 +152,4 @@ export const matchesSearch = (query: string, fields: string[]): boolean => {
   const lowerQuery = query.toLowerCase();
   return fields.some(field => field?.toLowerCase().includes(lowerQuery));
 };
+

@@ -11,12 +11,16 @@ const passwordSchema = z
 
   const register = z.object({
     body: z.object({
-      email: z.string({ required_error: "Email is required" }).email("Invalid email address"),
+      email: z
+        .string({ required_error: "Email is required" })
+        .email("Invalid email address"),
       name: z
         .string({ required_error: "Name is required" })
         .min(2, "Name must be at least 2 characters long"),
       password: passwordSchema,
-      otp: z.string({ required_error: "OTP is required" }).length(6, "OTP must be 6 digits"),
+      verificationToken: z.string({
+        required_error: "Verification token is required",
+      }),
     }),
   });
 
@@ -62,6 +66,14 @@ const updateUser = z.object({
             .partial()
             .strict()
             .optional(),
+        })
+        .partial()
+        .strict()
+        .optional(),
+      writingGoals: z
+        .object({
+          dailyWordCount: z.number().min(0).optional(),
+          weeklyWordCount: z.number().min(0).optional(),
         })
         .partial()
         .strict()

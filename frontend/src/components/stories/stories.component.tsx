@@ -1,13 +1,18 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { getShortenedText, ITopicData, topicsData, getWordCount, SELECTED_TOPIC_CLASSES } from "./stories.utils";
-import { formatReadingStats } from "../../utils/story-utils";
-import toast, { Toaster } from "react-hot-toast";
-import { useCreatePostMutation, useDeletePostMutation } from "../../redux/apis/post.api";
-import { useGetProfileInfoQuery } from "../../redux/apis/user.api";
+import React, { useState, useEffect, useRef } from "react";
 import jsPDF from "jspdf";
-import StoryWorldMap from "../story-map/StoryWorldMap";
-import BookmarkButton from "../BookmarkButton";
-import logo from "../../assets/logoNew.png";
+import StoriesViewComponent, { IStories } from "./stories.view.component";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getUserInfo, isLoggedIn } from "../../services/auth.service";
+import { getRequestLimit, getWordCount, prompts } from "./stories.utils";
+import {
+  useGenerateFreeModelMutation,
+  useGenerateModelMutation,
+} from "../../redux/apis/ai.model.api";
+import toast, { Toaster } from "react-hot-toast";
+import { SubmitHandler, useForm } from "react-hook-form";
+import { useGetProfileInfoQuery } from "../../redux/apis/user.api";
+import { getErrorMessage } from "../../error/error.message";
+import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import StoryGeneratingAnimation from "../loading/story-generating-animation.component";
 import { useDebounce } from "../../hooks/useDebounce";
 import ConfirmDialog from "./ConfirmDialog";
@@ -26,7 +31,10 @@ const soundtrackMap: Record<string, string> = {
   "😂 Comedy": "/audio/comedy.mp3",
   "🚀 Sci-Fi": "/audio/sci-fi.mp3",
   "🔍 Mystery": "/audio/mystery.mp3",
-  "🌟 Adventure": "/audio/adventure.mp3"
+  "🌟 Adventure": "/audio/adventure.mp3",
+  "🗺️ Adventurous": "/audio/adventure.mp3",
+  "🤖 Tech / Sci-Fi": "/audio/sci-fi.mp3",
+  "💖 Romance / Love": "/audio/romance.mp3",
 };
 
 type Inputs = {
@@ -34,7 +42,10 @@ type Inputs = {
 };
 
 const MAX_PROMPT_LENGTH = 2000;
+const WARN_THRESHOLD = 0.85;
 const lengths = ["short", "medium", "long"] as const;
+
+const StoriesComponent = () => {
 const WARN_THRESHOLD = 0.8;
 const DANGER_THRESHOLD = 0.95;
 
@@ -62,6 +73,11 @@ const GENRES = [
   { value: "🧙 Fantasy", icon: "🧙", name: "Fantasy" },
   { value: "🔍 Mystery", icon: "🔍", name: "Mystery" },
   { value: "🌟 Adventure", icon: "🌟", name: "Adventure" },
+
+  // New premium genres
+  { value: "🗺️ Adventurous", icon: "🗺️", name: "Adventurous" },
+  { value: "🤖 Tech / Sci-Fi", icon: "🤖", name: "Tech / Sci-Fi" },
+  { value: "💖 Romance / Love", icon: "💖", name: "Romance / Love" },
 ] as const;
 
 
@@ -71,53 +87,88 @@ const GENRE_LABELS: Record<string, Record<GenreName, string>> = {
   English: {
     Drama: "Drama", Comedy: "Comedy", Horror: "Horror", Romance: "Romance",
     "Sci-Fi": "Sci-Fi", Fantasy: "Fantasy", Mystery: "Mystery", Adventure: "Adventure",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Spanish: {
     Drama: "Drama", Comedy: "Comedia", Horror: "Terror", Romance: "Romance",
     "Sci-Fi": "Ciencia ficcion", Fantasy: "Fantasia", Mystery: "Misterio", Adventure: "Aventura",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   French: {
     Drama: "Drame", Comedy: "Comedie", Horror: "Horreur", Romance: "Romance",
     "Sci-Fi": "Science-fiction", Fantasy: "Fantastique", Mystery: "Mystere", Adventure: "Aventure",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Portuguese: {
     Drama: "Drama", Comedy: "Comedia", Horror: "Terror", Romance: "Romance",
     "Sci-Fi": "Ficcao cientifica", Fantasy: "Fantasia", Mystery: "Misterio", Adventure: "Aventura",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Hindi: {
     Drama: "नाटक", Comedy: "à¤¹à¤¾à¤¸à¥à¤¯", Horror: "डरावनी", Romance: "à¤ªà¥à¤°à¥‡à¤®",
     "Sci-Fi": "à¤µà¤¿à¤œà¥à¤žà¤¾à¤¨ à¤•à¤¥à¤¾", Fantasy: "à¤•à¤²à¥à¤ªà¤¨à¤¾", Mystery: "à¤°à¤¹à¤¸à¥à¤¯", Adventure: "रोमांच",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   German: {
     Drama: "Drama", Comedy: "Komodie", Horror: "Horror", Romance: "Romanze",
     "Sci-Fi": "Science-Fiction", Fantasy: "Fantasy", Mystery: "Mysterie", Adventure: "Abenteuer",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Japanese: {
     Drama: "ãƒ‰ãƒ©ãƒž", Comedy: "ã‚³ãƒ¡ãƒ‡ã‚£", Horror: "ãƒ›ãƒ©ãƒ¼", Romance: "ãƒ­ãƒžãƒ³ã‚¹",
     "Sci-Fi": "SF", Fantasy: "ãƒ•ã‚¡ãƒ³ã‚¿ã‚¸ãƒ¼", Mystery: "ãƒŸã‚¹ãƒ†ãƒªãƒ¼", Adventure: "å†’é™º",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Korean: {
     Drama: "ë“œë¼ë§ˆ", Comedy: "ì½”ë¯¸ë””", Horror: "ê³µí¬", Romance: "ë¡œë§¨ìŠ¤",
     "Sci-Fi": "SF", Fantasy: "íŒíƒ€ì§€", Mystery: "ë¯¸ìŠ¤í„°ë¦¬", Adventure: "ëª¨í—˜",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Bengali: {
 
     Drama: "à¦¨à¦¾à¦Ÿà¦•", Comedy: "à¦•à§Œà¦¤à§à¦•", Horror: "à¦­à§Œà¦¤à¦¿à¦•", Romance: "à¦ªà§à¦°à§‡à¦®",
     "Sci-Fi": "à¦¬à¦¿à¦œà§à¦žà¦¾à¦¨ à¦•à¦²à§à¦ªà¦•à¦¾à¦¹à¦¿à¦¨à¦¿", Fantasy: "à¦•à¦²à§à¦ªà¦¨à¦¾", Mystery: "à¦°à¦¹à¦¸à§à¦¯", Adventure: "à¦…à¦­à¦¿à¦¯à¦¾à¦¨",
-
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Tamil: {
     Drama: "à®¨à®¾à®Ÿà®•à®®à¯", Comedy: "à®¨à®•à¯ˆà®šà¯à®šà¯à®µà¯ˆ", Horror: "à®¤à®¿à®•à®¿à®²à¯", Romance: "à®•à®¾à®¤à®²à¯",
     "Sci-Fi": "à®…à®±à®¿à®µà®¿à®¯à®²à¯ à®ªà¯à®©à¯ˆà®µà¯", Fantasy: "à®•à®±à¯à®ªà®©à¯ˆ", Mystery: "à®®à®°à¯à®®à®®à¯", Adventure: "à®šà®¾à®•à®šà®®à¯",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Telugu: {
     Drama: "à°¨à°¾à°Ÿà°•à°‚", Comedy: "à°¹à°¾à°¸à±à°¯à°‚", Horror: "à°­à°¯à°¾à°¨à°•à°‚", Romance: "à°ªà±à°°à±‡à°®",
     "Sci-Fi": "à°µà°¿à°œà±à°žà°¾à°¨ à°•à°¥", Fantasy: "à°•à°¾à°²à±à°ªà°¨à°¿à°•à°‚", Mystery: "à°°à°¹à°¸à±à°¯à°‚", Adventure: "à°¸à°¾à°¹à°¸à°‚",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Marathi: {
 
     Drama: "नाटक", Comedy: "विनोद", Horror: "भयकथा", Romance: "à¤ªà¥à¤°à¥‡à¤®à¤•à¤¥à¤¾",
     "Sci-Fi": "à¤µà¤¿à¤œà¥à¤žà¤¾à¤¨à¤•à¤¥à¤¾", Fantasy: "à¤•à¤²à¥à¤ªà¤¨à¤¾à¤°à¤®à¥à¤¯", Mystery: "à¤°à¤¹à¤¸à¥à¤¯", Adventure: "साहस",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
 
   },
 };
@@ -561,13 +612,9 @@ const StoriesViewComponent: React.FC<StoriesComponentProps> = ({
   onPublishSuccess,
 }) => {
   const location = useLocation();
-  const audioPlayerRef = useRef<AudioPlayerHandle>(null);
-
-  // Start with a clean state that adapts dynamically
-  const [selectedStory, setSelectedStory] = useState<IStories | null>(null);
-  const [topics, setTopics] = useState<ITopicData[]>(topicsData);
-  const [selectTopics, setSelectTopics] = useState<ITopicData[]>([]);
-  const [newTopicTitle, setNewTopicTitle] = useState<string>("");
+const navigate = useNavigate();
+const { register, handleSubmit, reset, setValue } = useForm<Inputs>();
+  const [stories, setStories] = useState<IStories[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const { data } = useGetProfileInfoQuery(undefined);
   const userRole = getUserInfo();
@@ -575,14 +622,36 @@ const StoriesViewComponent: React.FC<StoriesComponentProps> = ({
   const login = isLoggedIn();
   const [generateModel] = useGenerateModelMutation();
   const [generateFreeModel] = useGenerateFreeModelMutation();
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [searchFilter, setSearchFilter] = useState<string>("all");
-
-  const savedDraft = loadStoryDraft();
-  const [showRestorePrompt, setShowRestorePrompt] = useState<boolean>(() => Boolean(savedDraft));
   const [selectedPrompt, setSelectedPrompt] = useState<string>("");
   const [showHelpModal, setShowHelpModal] = useState(false);
+const [selectedGenre, setSelectedGenre] = useState<string>("");
+const [selectedLength, setSelectedLength] = useState<string>("medium");
+const [textareaValue, setTextareaValue] = useState<string>("");
+const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+const dropdownRef = useRef<HTMLDivElement>(null);
+const inputRef = useRef<HTMLTextAreaElement>(null);
+const [guestRequestCount, setGuestRequestCount] = useState<number>(() =>
+  parseInt(localStorage.getItem("guestRequestCount") || "0", 10),
+);
+const [showLimitModal, setShowLimitModal] = useState<boolean>(false);
+
+useEffect(() => {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}, []);
+
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (
+      dropdownRef.current &&
+      !dropdownRef.current.contains(event.target as Node)
+    ) {
+      setIsDropdownOpen(false);
+    }
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      setIsDropdownOpen(false);
 
   const [selectedGenre, setSelectedGenre] = useState<string>(
 
@@ -796,58 +865,10 @@ const StoriesViewComponent: React.FC<StoriesComponentProps> = ({
       toast.error("Text-to-speech is not supported in this browser.");
       return;
     }
-
-    if (isPlayingAudio) {
-      if (isPausedAudio) {
-        window.speechSynthesis.resume();
-        setIsPausedAudio(false);
-        toast.success("Resumed reading story");
-      } else {
-        window.speechSynthesis.pause();
-        setIsPausedAudio(true);
-        toast.success("Paused reading story");
-      }
-    } else {
-      window.speechSynthesis.cancel();
-      const cleanContent = selectedStory.content.replace(/<[^>]*>/g, "");
-      const utterance = new SpeechSynthesisUtterance(cleanContent);
-      
-      utterance.onend = () => {
-        setIsPlayingAudio(false);
-        setIsPausedAudio(false);
-      };
-
-      utterance.onerror = (e) => {
-        console.error("SpeechSynthesis error:", e);
-        setIsPlayingAudio(false);
-        setIsPausedAudio(false);
-      };
-
-      const voices = window.speechSynthesis.getVoices();
-      const englishVoice = voices.find(
-        (v) => v.lang.startsWith("en-") && v.name.includes("Google")
-      ) || voices.find((v) => v.lang.startsWith("en-"));
-      if (englishVoice) {
-        utterance.voice = englishVoice;
-      }
-
-      window.speechSynthesis.speak(utterance);
-      setIsPlayingAudio(true);
-      setIsPausedAudio(false);
-      toast.success("Playing story audio");
-    }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleStopAudio = () => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsPlayingAudio(false);
-    setIsPausedAudio(false);
-    toast.success("Stopped audio playback");
-  };
-
+  document.addEventListener("mousedown", handleClickOutside);
+  document.addEventListener("keydown", handleKeyDown);
   useEffect(() => {
     return () => {
       if ("speechSynthesis" in window) {
@@ -950,57 +971,116 @@ const StoriesViewComponent: React.FC<StoriesComponentProps> = ({
     return () => clearTimeout(timer);
   }, [selectedStory, selectedStory?.content, isLogin, selectTopics, createPost]);
 
-  const handelStorySelection = (story: IStories) => {
-    setSelectedStory(story);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+    document.removeEventListener("keydown", handleKeyDown);
   };
+}, []);
 
-  const handleTopicClick = (index: number) => {
-    setTopics((currentTopics) =>
-      currentTopics.map((topic, topicIndex) =>
-        topicIndex === index
-          ? { ...topic, selected: !topic.selected }
-          : topic
-      )
-    );
-  };
-  const handleAddTopic = () => {
-    const title = newTopicTitle.trim();
-  };
+useEffect(() => {
+  if (location.state && location.state.prompt) {
+    setTextareaValue(location.state.prompt);
+    navigate(location.pathname, { replace: true, state: {} });
+  }
+}, [location, navigate]);
 
-  const [generateModel] = useGenerateModelMutation();
-  const [generateFreeModel] = useGenerateFreeModelMutation();
-  const { data } = useGetProfileInfoQuery(undefined);
-  const userRole = getUserInfo();
-  const login = isLoggedIn();
+useEffect(() => {
+  setValue("prompt", textareaValue);
+}, [textareaValue, setValue]);
 
-  const [generateModel] = useGenerateModelMutation();
-  const [generateFreeModel] = useGenerateFreeModelMutation();
-  const { data } = useGetProfileInfoQuery(undefined);
-  const userRole = getUserInfo();
-  const login = isLoggedIn();
-
-  const handleGenerateClick = useCallback(() => {
-    if (loading || isOverLimit || !textareaValue.trim()) return;
-    if (stories && stories.length > 0) {
-      setShowOverwriteConfirm(true);
+const onSubmit: SubmitHandler<Inputs> = useCallback(async (data) => {
+    if (isGenerationInProgressRef.current) return;
+    
+    if (getWordCount(data.prompt) < 10) {
+      toast.error("Please enter a prompt with at least 10 words to generate a story.");
       return;
     }
-    const form = inputRef.current?.closest("form");
-    if (form) form.requestSubmit();
-  }, [loading, isOverLimit, textareaValue, stories]);
 
-  const handleConfirmOverwrite = useCallback(() => {
-    setShowOverwriteConfirm(false);
-    const form = inputRef.current?.closest("form");
-    if (form) form.requestSubmit();
-  }, []);
+    setLoading(true);
+    setIsHighLatency(false);
+    isGenerationInProgressRef.current = true;
 
-  const handleCancelOverwrite = useCallback(() => {
-    setShowOverwriteConfirm(false);
-  }, []);
+    // Timeout to simulate high latency state if generation takes more than 5s
+    let latencyTimeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      setIsHighLatency(true);
+    }, 5000);
 
-  const onSubmit: SubmitHandler<Inputs> = useCallback(async (data) => {
-    if (isGenerationInProgressRef.current) {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    try {
+      timeoutId = setTimeout(() => {
+        if (isGenerationInProgressRef.current) {
+          toast.error("Story generation timed out. Please try again.");
+          handleCancelGeneration(true);
+        }
+      }, 60000);
+
+      const payload = {
+        prompt: selectedGenre ? `[Genre: ${selectedGenre}] ${data.prompt}` : data.prompt,
+        wordLength: selectedLength === "short" ? 175 : selectedLength === "long" ? 800 : 450,
+        language: selectedLanguage,
+        tone: selectedTone || undefined,
+        characters: characters.map(({ name, role, personality }) => ({ name, role, personality })),
+      };
+
+      const generationRequest = login ? generateModel(payload) : generateFreeModel(payload);
+      activeGenerationRef.current = generationRequest;
+      const res = await generationRequest.unwrap();
+      
+      if (res) {
+        toast.success(res.message);
+        addPrompt(data.prompt);
+        setStories(getUniqueStories(res.data as IStories[]));
+        setTextareaValue("");
+        setSelectedPrompt("");
+        setValue("prompt", "");
+        // Clear draft after successful generation
+        localStorage.removeItem(DRAFT_KEY);
+        setDraftStatus("");
+        reset();
+        setCharacters([]);
+        setCurrentStep(1);
+        if (selectedGenre) {
+          playSoundtrack(selectedGenre);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      if (message !== "Story generation was cancelled.") {
+        toast.error(message);
+      }
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (latencyTimeoutId) {
+        clearTimeout(latencyTimeoutId);
+      }
+      activeGenerationRef.current = null;
+      isGenerationInProgressRef.current = false;
+      setLoading(false);
+      setIsHighLatency(false);
+    }
+  }, [
+    login,
+    guestRequestCount,
+    selectedGenre,
+    selectedLength,
+    selectedLanguage,
+    selectedTone,
+    generateModel,
+    generateFreeModel,
+    addPrompt,
+    setValue,
+    playSoundtrack,
+    handleCancelGeneration,
+    characters,
+    reset,
+  ]);
+
+  const handleAddTopic = () => {
+    const title = newTopicTitle.trim();
     if (!title) {
       toast.error("Please enter a topic.");
       return;
@@ -1038,6 +1118,7 @@ const StoriesViewComponent: React.FC<StoriesComponentProps> = ({
       currentTopics.filter((_, topicIndex) => topicIndex !== index)
     );
   };
+
   const handleCopyStory = async () => {
     if (selectedStory?.content) {
       await navigator.clipboard.writeText(selectedStory.content);
@@ -1047,70 +1128,97 @@ const StoriesViewComponent: React.FC<StoriesComponentProps> = ({
     }
   };
 
-    if (getWordCount(data.prompt) < 10) {
-      toast.error("Please enter a prompt with at least 10 words to generate a story.");
-      toast.error(
-        "Please enter a prompt with at least 10 words to generate a story."
-      );
-      return;
-    }
   const handleExportPDF = async () => {
     if (!selectedStory) { toast.error("No story available to export."); return; }
     if (!selectedStory.content?.trim()) {toast.error("Story content is empty. Cannot export.");return;}
     const toastId = toast.loading("Preparing your premium PDF...");
 
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
     try {
+      // Helper to load image assets asynchronously with a safe timeout
+      const loadImageWithTimeout = (src: string, timeoutMs: number = 3000): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          const timeout = setTimeout(() => {
+            img.src = ""; // stop loading
+            reject(new Error(`Timeout loading image: ${src}`));
+          }, timeoutMs);
 
-
-      timeoutId = setTimeout(() => {
-        if (isGenerationInProgressRef.current) {
-          toast.error("Story generation timed out. Please try again.");
-          handleCancelGeneration(true);
-        }
-      }, 60000);
-
-
-
-      const payload = {
-        prompt: selectedGenre ? `[Genre: ${selectedGenre}] ${data.prompt}` : data.prompt,
-        wordLength: selectedLength === "short" ? 175 : selectedLength === "long" ? 800 : 450,
-        prompt: selectedGenre
-          ? `[Genre: ${selectedGenre}] ${data.prompt}`
-          : data.prompt,
-        wordLength:
-          selectedLength === "short"
-            ? 175
-            : selectedLength === "long"
-              ? 800
-              : 450,
-        language: selectedLanguage,
-        tone: selectedTone || undefined,
-        characters: characters.map(({ name, role, personality }) => ({ name, role, personality })),
+          img.onload = () => {
+            clearTimeout(timeout);
+            resolve(img);
+          };
+          img.onerror = (e) => {
+            clearTimeout(timeout);
+            reject(e);
+          };
+          img.src = src;
+        });
       };
 
-      const generationRequest = login ? generateModel(payload) : generateFreeModel(payload);
-      const generationRequest = login
-        ? generateModel(payload)
-        : generateFreeModel(payload);
-      activeGenerationRef.current = generationRequest;
-      const res = await generationRequest.unwrap();
-      if (res) {
-        toast.success(res.message);
-        addPrompt(data.prompt);
-        setStories(getUniqueStories(res.data as IStories[]));
-        setTextareaValue("");
-        setSelectedPrompt("");
-        setValue("prompt", "");
-        // Clear draft after successful generation
+      let logoImg: HTMLImageElement | null = null;
+      let storyImg: HTMLImageElement | null = null;
 
+      try {
+        logoImg = await loadImageWithTimeout(logo);
+      } catch (err) {
+        console.warn("Failed to load StorySparkAI logo for PDF", err);
+      }
 
-        localStorage.removeItem("story_spark_draft");
+      if (selectedStory.imageURL) {
+        try {
+          storyImg = await loadImageWithTimeout(selectedStory.imageURL);
+        } catch (err) {
+          console.warn("Failed to load story banner image for PDF", err);
+        }
+      }
 
+      // Initialize A4 PDF document (210mm x 297mm)
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
 
-        if (selectedGenre) {
-          playSoundtrack(selectedGenre);
+      const title = selectedStory.title || "Untitled Story";
+      const content = selectedStory.content || "";
+      const tag = (selectedStory.tag || "STORY").toUpperCase();
+
+      const leftMargin = 20;
+      const rightMargin = 20;
+      const topMargin = 20;
+      const bottomMargin = 20;
+      const printableWidth = 210 - leftMargin - rightMargin; // 170 mm
+      const maxY = 297 - bottomMargin - 10; // Bottom boundary (267mm) leaving room for footer
+
+      let yCursor = topMargin;
+
+      // 1. Header (Logo & Sub-header)
+      if (logoImg) {
+        const logoHeight = 8;
+        const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
+        doc.addImage(logoImg, "PNG", leftMargin, yCursor, logoWidth, logoHeight);
+      } else {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(99, 102, 241); // Brand Indigo
+        doc.text("StorySparkAI", leftMargin, yCursor + 6);
+      }
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184); // Slate 400
+      doc.text("PREMIUM AI GENERATED STORY", 190, yCursor + 5, { align: "right" });
+
+      yCursor += 10;
+
+      // Header Divider Line
+      doc.setDrawColor(99, 102, 241); // Brand Indigo
+      doc.setLineWidth(0.5);
+      doc.line(leftMargin, yCursor, 190, yCursor);
+
+      yCursor += 8;
+
       // 2. Story Banner Image (only on Page 1)
       if (storyImg) {
         const bannerHeight = 55;
@@ -1230,73 +1338,41 @@ const StoriesViewComponent: React.FC<StoriesComponentProps> = ({
           doc.setLineWidth(0.2);
           doc.line(leftMargin, 17, 190, 17);
         }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    } catch (error: unknown) {
-      const message = getErrorMessage(error);
-      if (message !== "Story generation was cancelled.") {
-        toast.error(message);
-      }
-    } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
       }
 
-      activeGenerationRef.current = null;
-      isGenerationInProgressRef.current = false;
-      setLoading(false);
-      setIsHighLatency(false);
-    }
-  }, [
-    login,
-    guestRequestCount,
-    selectedGenre,
-    selectedLength,
-    selectedLanguage,
-    selectedTone,
-    generateModel,
-    generateFreeModel,
-    addPrompt,
-    setValue,
-    playSoundtrack,
-    handleCancelGeneration,
-    characters,
-    reset,
-  ]);
-
-
-  const handleCancelGeneration = (isTimeout = false) => {
-    activeGenerationRef.current?.abort();
-    activeGenerationRef.current = null;
-    isGenerationInProgressRef.current = false;
-    setLoading(false);
-    if (!isTimeout) {
-      toast("Story generation cancelled.");
+      // Save PDF with sanitized name
+      const safeTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      doc.save(`storyspark_${safeTitle}.pdf`);
+      toast.dismiss(toastId);
+      toast.success("PDF generated successfully!");
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      toast.dismiss(toastId);
+      toast.error("Failed to generate PDF. Please try again.");
     }
   };
 
-
-  const isGenerateDisabled = loading || isOverLimit || !textareaValue.trim();
-
-  const handleOpenHelp = useCallback(() => setShowHelpModal(true), []);
-  const handleCloseHelp = useCallback(() => setShowHelpModal(false), []);
-  const handleGenerateShortcut = useCallback(() => {
-    if (isGenerateDisabled) {
-      return;
-    }
+  const isOverLimit = textareaValue.length >= MAX_PROMPT_LENGTH;
+  const isNearLimit = textareaValue.length >= MAX_PROMPT_LENGTH * WARN_THRESHOLD;
+  
+  useKeyboardShortcuts({
+  onOpenHelp: () => setShowHelpModal(true),
+  onCloseHelp: () => setShowHelpModal(false),
+  onGenerate: () => {
     if (inputRef.current) {
       const form = inputRef.current.closest("form");
       if (form) form.requestSubmit();
     }
-  }, [isGenerateDisabled]);
-
-  const handlePublishShortcut = useCallback(() => {
+  },
+  onPublish: () => {
     const publishBtn = document.getElementById("publish-story-btn");
     publishBtn?.click();
-  }, []);
-
-  const handleFocusPrompt = useCallback(() => {
+  },
+  focusPrompt: () => {
     inputRef.current?.focus();
+  },
+  hasStory: stories.length > 0,
+});
   }, []);
 
   const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -1456,42 +1532,12 @@ const handleExportMarkdown = () => {
     );
   }
 
-  if (!selectedStory) {
-    return null;
-  }
-
-  return (
-    <div className="mt-16 px-4 sm:px-6 lg:px-8 max-w-8xl mx-auto pb-10">
-      <style>
-        {`
-          @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fade-in-up {
-            animation: fadeInUp 0.6s ease-out forwards;
-          }
-        `}
-      </style>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade-in-up">
-        <div className="col-span-1 lg:col-span-8 flex flex-col">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <div>
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-blue-400 mb-2">
-                {selectedStory?.title}
-              </h1>
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center rounded-full bg-purple-900/60 text-purple-300 border border-purple-700/50 py-1 px-3 text-xs font-semibold">
-                  Γëí╞Æ├ä┬í {selectedStory.tag}
+          {!login && (
+            <div className="pt-2 text-center">
+              <div className="!rounded-button bg-gradient-to-r from-white/20 to-white/10 text-gray-400 px-3 py-2 flex items-center gap-2 transition-all duration-300 rounded text-sm whitespace-normal md:whitespace-nowrap leading-relaxed">
+                <span>
+                  Free access for 3 requests — <Link to="/login"><span className="text-indigo-400 underline font-semibold">Login</span></Link> for more!
                 </span>
-                <span className="inline-flex items-center rounded-full bg-blue-900/60 text-blue-300 border border-blue-700/50 py-1 px-3 text-xs font-semibold">
-                  Γëí╞Æ├«├ë {selectedStory.language || "English"}
-                </span>
-                {selectedStory.emotions && selectedStory.emotions.length > 0 && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-900/60 text-emerald-300 border border-emerald-700/50 py-1 px-3 text-xs font-semibold">
-                    Γëí╞Æ├┐├¿ {selectedStory.emotions.join(", ")}
-                  </span>
-                )}
               </div>
             </div>
           )}
@@ -1515,32 +1561,15 @@ const handleExportMarkdown = () => {
               </span>
               <br />
               <span>Total posts: {login ? (data?.postsCount ?? 0) : 0}</span>
-            <div className="flex justify-start sm:justify-end">
-              <div className="flex -space-x-5">
-                {stories && stories.length > 0 && (
-                  stories.map((story) => (
-                    <button
-                      key={story.uuid}
-                      className={`relative w-16 h-16 rounded-full border-2 ${
-                        selectedStory?.uuid === story.uuid
-                          ? "border-blue-500 scale-110"
-                          : "border-white"
-                      } hover:scale-110 transition-transform duration-200 focus:outline-none`}
-                      onClick={() => handelStorySelection(story)}
-                    >
-                      <img
-                        src={story.imageURL}
-                        alt={story.title}
-                        className="w-full h-full object-cover rounded-full"
-                      />
-                    </button>
-                  ))
-                )}
-              </div>
             </div>
           </div>
+        </div>
 
         <div className="mt-11">
+          <h1 className="text-gray-300 text-2xl sm:text-3xl md:text-4xl font-extrabold text-center mb-12">
+            ✨ Turn Your Ideas Into{" "}
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-blue-400">
+              Amazing Stories!
           <h1 className="text-slate-900 dark:text-gray-300 text-2xl sm:text-3xl md:text-4xl font-extrabold text-center mb-12">
             âœ¨ {text.titleStart}{" "}
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-blue-400">
@@ -1549,6 +1578,38 @@ const handleExportMarkdown = () => {
             </span>{" "}
             âœ¨
           </h1>
+
+          <div className="max-w-3xl mx-auto px-4 sm:px-0">
+            <div className="bg-blue-500/10 rounded-md p-4 border border-gray-400">
+<div className="relative">
+  <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+    <div className="flex flex-wrap gap-2 mb-3">
+      {[
+        "🎭 Drama",
+        "😂 Comedy",
+        "😱 Horror",
+        "💕 Romance",
+        "🚀 Sci-Fi",
+        "🧙 Fantasy",
+        "🔍 Mystery",
+        "🌟 Adventure",
+      ].map((genre) => (
+        <button
+          key={genre}
+          type="button"
+          onClick={() =>
+            setSelectedGenre(selectedGenre === genre ? "" : genre)
+          }
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+            selectedGenre === genre
+              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+              : "bg-white/10 text-gray-400 hover:bg-white/20 hover:text-gray-200"
+          }`}
+        >
+          {genre}
+        </button>
+      ))}
+    </div>
         </div>
           <div className="bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
             <div className="absolute top-[-50px] right-[-50px] w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -2004,6 +2065,179 @@ onKeyDown={(e) => {
       <span className="text-xs text-gray-400 mr-1">📏 Length:</span>
 
       {lengths.map((length) => (
+        <button
+          key={length}
+          type="button"
+          onClick={() => setSelectedLength(length)}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+            selectedLength === length
+              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+              : "bg-white/10 text-gray-400 hover:bg-white/20 hover:text-gray-200"
+          }`}
+        >
+          {length.charAt(0).toUpperCase() + length.slice(1)}
+        </button>
+      ))}
+    </div>
+
+    <div className="relative">
+      <textarea
+  {...register("prompt")}
+  ref={(el) => {
+    register("prompt").ref(el);
+    inputRef.current = el;
+  }}
+        className={`w-full h-32 sm:h-40 resize-none border-none outline-none bg-transparent text-gray-300 focus:ring-0 text-lg leading-relaxed tracking-wide placeholder:italic placeholder:text-gray-500 pr-10 transition-colors duration-200 ${
+          isOverLimit
+            ? "ring-1 ring-red-500 rounded"
+            : isNearLimit
+            ? "ring-1 ring-yellow-400 rounded"
+            : ""
+        }`}
+        placeholder="Every great story begins with a single idea. What's yours?"
+        value={textareaValue}
+        maxLength={MAX_PROMPT_LENGTH}
+        onChange={(e) => setTextareaValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            const form = e.currentTarget.closest("form");
+            if (form) form.requestSubmit();
+          }
+        }}      
+        />
+
+      {textareaValue.length > 0 && (
+        <button
+          type="button"
+          onClick={handleClearPrompt}
+          className="absolute right-2 top-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
+          aria-label="Clear prompt"
+          title="Clear prompt"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      )}
+
+      <div className="flex items-center justify-between mt-1 px-1">
+        {isOverLimit ? (
+          <p className="text-xs text-red-400 flex items-center gap-1">
+            <span>⚠</span> Character limit reached — generate is disabled
+          </p>
+        ) : isNearLimit ? (
+          <p className="text-xs text-yellow-400 flex items-center gap-1">
+            <span>⚠</span>{" "}
+            {MAX_PROMPT_LENGTH - textareaValue.length} characters remaining
+          </p>
+        ) : (
+          <span />
+        )}
+
+        <span
+          className={`text-xs tabular-nums ml-auto ${
+            isOverLimit
+              ? "text-red-400 font-medium"
+              : isNearLimit
+              ? "text-yellow-400"
+              : "text-gray-500"
+          }`}
+        >
+          {textareaValue.length} / {MAX_PROMPT_LENGTH}
+        </span>
+      </div>
+    </div>
+
+    <p className="text-xs text-gray-500 mt-1 px-1">
+      💡  <span className="font-medium">Keyboard tip:</span> Press{" "}
+      <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
+        Enter
+      </kbd>{" "}
+      to generate &bull;{" "}
+      <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
+        Ctrl + Enter
+      </kbd>{" "}
+      also works &bull;{" "}
+      <kbd className="px-1 py-0.5 text-xs bg-gray-700 rounded border border-gray-600">
+        Shift + Enter
+      </kbd>{" "}
+      for new line
+    </p>
+
+    <div className="flex justify-end mt-2 w-full">
+      <button
+        type="submit"
+        disabled={loading || isOverLimit}
+        className={`w-full sm:w-auto justify-center rounded-lg bg-gradient-to-r from-blue-400 to-indigo-500 text-gray-200 px-6 py-3 font-semibold ${
+          loading || isOverLimit
+            ? "opacity-50 cursor-not-allowed"
+            : "hover:shadow-lg hover:shadow-indigo-500/50"
+        } transition-all duration-300 transform hover:scale-105 flex items-center space-x-2 group cursor-pointer`}
+      >
+        <i className="fas fa-wand-magic-sparkles text-xl transition-transform duration-300 group-hover:animate-wiggle"></i>
+        {loading ? "Generating..." : "Generate"}
+      </button>
+    </div>
+  </form>
+</div>
+            </div>
+
+            <div className="w-full max-w-2xl m-auto mt-4">
+  <h1 className="text-sm text-gray-500 mb-1">
+    Here are some example prompts you can refer to:-
+  </h1>
+
+  <div className="relative" ref={dropdownRef}>
+    <button
+      type="button"
+      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+      className="w-full p-3 bg-slate-800 text-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 flex items-center justify-between text-sm text-left transition-all duration-200"
+    >
+      <span className="truncate pr-4">
+        {selectedPrompt || "Select a prompt"}
+      </span>
+
+      <span
+        className={`text-gray-300 transition-transform duration-200 ${
+          isDropdownOpen ? "rotate-180" : ""
+        }`}
+      >
+        ▼
+      </span>
+    </button>
+
+    {isDropdownOpen && (
+      <ul className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl focus:outline-none divide-y divide-slate-700/30">
+        {prompts.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPrompt(item.prompt);
+                setTextareaValue(item.prompt);
+                setIsDropdownOpen(false);
+              }}
+              className="w-full text-left px-4 py-3 text-sm text-gray-400 hover:bg-indigo-600 hover:text-white transition-colors duration-150 whitespace-normal break-words leading-relaxed"
+            >
+              {item.prompt}
+            </button>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
@@ -2277,30 +2511,21 @@ onKeyDown={(e) => {
             )}
           </div>
         </div>
-
-      <RecentPromptsPanel
-        recentPrompts={recentPrompts}
-        onSelectPrompt={handleSelectRecentPrompt}
-        onRemovePrompt={removePrompt}
-        onClearAll={clearAll}
-        isOpen={isRecentPromptsOpen}
-        onToggle={handleToggleRecentPrompts}
-        text={recentPromptsText}
-      />
+      </div>
 
       {showHelpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white border border-slate-200 dark:border-white/10 rounded-2xl p-6 max-w-md w-full text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 tracking-tight select-none border-b border-slate-100 dark:border-white/5 pb-2.5">
-              {text.shortcuts}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold text-white mb-4">
+              Keyboard Shortcuts
             </h2>
 
-            <div className="space-y-3 text-slate-600 text-sm dark:text-gray-300">
-              <div><kbd>?</kbd> {text.openHelp}</div>
-              <div><kbd>Esc</kbd> {text.closeHelp}</div>
-              <div><kbd>/</kbd> {text.focusPrompt}</div>
-              <div><kbd>Ctrl + Enter</kbd> {text.generateStory}</div>
-              <div><kbd>Ctrl + S</kbd> {text.publishStory}</div>
+            <div className="space-y-3 text-gray-300 text-sm">
+              <div><kbd>?</kbd> Open help</div>
+              <div><kbd>Esc</kbd> Close help</div>
+              <div><kbd>/</kbd> Focus prompt</div>
+              <div><kbd>Ctrl + Enter</kbd> Generate story</div>
+              <div><kbd>Ctrl + S</kbd> Publish story</div>
             </div>
 
             <button
@@ -2308,62 +2533,19 @@ onKeyDown={(e) => {
               className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg"
 
             >
-              {text.close}
+              Close
             </button>
           </div>
         </div>
       )}
 
-      <ConfirmDialog
-        isOpen={showOverwriteConfirm}
-        onConfirm={handleConfirmOverwrite}
-        onCancel={handleCancelOverwrite}
-        title="Overwrite existing stories?"
-        message="You already have stories in your workspace. Generating a new story will replace them. Do you want to continue?"
-        confirmLabel="Generate"
-        cancelLabel="Cancel"
-      />
-
-      {loading && <StoryGeneratingAnimation onCancel={handleCancelGeneration} isHighLatency={isHighLatency} />}
-
-      {stories.length > 0 && (
-        <div className="mb-6 bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 p-4 rounded-2xl">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Search stories..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <select
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="all">All Fields</option>
-              <option value="title">Title</option>
-              <option value="content">Content</option>
-              <option value="genre">Genre</option>
-            </select>
-          </div>
-          {searchQuery && (
-            <div className="mt-2 text-sm text-slate-400">
-              Found {filteredStories.length} {filteredStories.length === 1 ? 'story' : 'stories'}
-            </div>
-          )}
-        </div>
-      )}
-
+      {loading && <StoryGeneratingAnimation />}
       <StoriesViewComponent
-        stories={currentStories}
+        stories={stories}
         isLogin={login}
         setStories={setStories}
-        onPublishSuccess={handlePublishSuccess}
-        isLoading={loading}
       />
+      <div className="absolute top-[-200px] left-[250px] w-[800px] h-[350px] bg-blue-500/20 rounded-full blur-3xl -z-10"></div>
 
       <div className="fixed top-[-200px] left-[250px] w-[800px] h-[350px] bg-blue-500/20 rounded-full blur-3xl -z-10"></div>
 
@@ -2371,66 +2553,35 @@ onKeyDown={(e) => {
 
       {showLimitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.15)] max-w-md w-full p-6 transform transition-all text-slate-900 dark:bg-[#0f172a] dark:border-white/10 dark:text-white dark:shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+          <div className="bg-[#0f172a] border border-white/10 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)] max-w-md w-full p-6 transform transition-all">
             <div className="text-center">
               <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i className="fas fa-lock text-2xl text-blue-400"></i>
-        <div className="col-span-1 lg:col-span-4">
-          <GeneratedStoryTimeline
-            content={selectedStory.content}
-            title={selectedStory.title}
-            narrationState={narrationState}
-            narrationWordIndex={narrationWordIndex}
-          />
-
-          <div className="mb-5">
-            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-blue-400">
-              Preview
-            </h1>
-          </div>
-          <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden group">
-            <div className="relative flex flex-col rounded-lg">
-              <div className="relative m-3 overflow-hidden text-white rounded-xl">
-                <ImageFallback
-                  src={selectedStory.imageURL}
-                  alt="card-image"
-                  className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105"
-                />
               </div>
-              <div className="px-3 py-1">
-                <div className="flex justify-between items-center mb-2 w-full">
-                  <div className="flex items-center gap-2">
-                    <div className="inline-flex items-center rounded-full bg-purple-600 py-1 px-3 text-xs font-semibold text-white shadow-sm">
-                      {selectedStory.tag.toUpperCase()}
-                    </div>
-                    <div className="inline-flex items-center rounded-full bg-indigo-600 py-1 px-3 text-xs font-semibold text-white shadow-sm">
-                      Γëí╞Æ├«├ë {(selectedStory.language || "English").toUpperCase()}
-                    </div>
-                    <div className="inline-flex items-center rounded-full bg-slate-700 py-1 px-2.5 text-xs font-medium text-slate-300 shadow-sm gap-1">
-                      ╬ô├àΓûÆΓê⌐Γòò├à {calculateReadingTime(selectedStory.content)} min read
-                    </div>
-                  </div>
-                  <div>
-                    <BookmarkButton storyId={selectedStory.uuid} />
-                  </div>
-                </div>
-                <h6 className="mb-1 text-gray-300 text-xl font-semibold">
-                  {selectedStory.title}
-                </h6>
-                <p className="text-gray-400 font-light breakwords text-sm sm:text-base">
-                  {getShortenedText(selectedStory.content)}
-                </p>
+              <h3 className="text-2xl font-bold text-gray-200 mb-2">
+                Free Limit Reached
+              </h3>
+              <p className="text-gray-400 mb-6 leading-relaxed">
+                You've used all 3 free story generations. Login to continue
+                creating more stories.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Link
+                  to="/login"
+                  className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-lg hover:shadow-indigo-500/25"
+                >
+                  Login
+                </Link>
+                <button
+                  onClick={() => setShowLimitModal(false)}
+                  className="w-full bg-transparent hover:bg-white/5 text-gray-400 hover:text-gray-300 font-medium py-3 px-4 rounded-xl transition-all"
+                >
+                  Continue Browsing
+                </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
-      {showWorldMap && selectedStory && (
-        <StoryWorldMap
-          story={selectedStory.content}
-          title={selectedStory.title}
-          onClose={() => setShowWorldMap(false)}
-        />
       )}
 
 
@@ -2463,7 +2614,6 @@ onKeyDown={(e) => {
     </div>
   );
 };
-
 
 export default StoriesComponent;
 
