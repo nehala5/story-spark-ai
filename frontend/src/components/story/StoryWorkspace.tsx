@@ -246,6 +246,10 @@ const StoryWorkspace = () => {
   characters={["Hero", "Villain"]}
 />
 
+<StoryOutlineGenerator
+  prompt="A young explorer discovers an ancient kingdom."
+/>
+
   <StoryViewer
     chapters={currentStory.chapters}
     storyId={currentStory.id}
