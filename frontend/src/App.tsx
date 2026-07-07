@@ -80,7 +80,9 @@ const router = createBrowserRouter([
       <>
         <ScrollToTop />
         <PageTitleUpdater />
-        <Outlet />
+        <RootLayout>
+          <Outlet />
+        </RootLayout>
       </>
     ),
     children: [
