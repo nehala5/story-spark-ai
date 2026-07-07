@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect } from "vitest";
-import { parseStory, IStoryGraph, IStoryNode } from "../storyParser";
+import { parseStory, IStoryNode } from "../storyParser";
 
 describe("parseStory", () => {
   it("returns empty nodes and links for an empty string", () => {
