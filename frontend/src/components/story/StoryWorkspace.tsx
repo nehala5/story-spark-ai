@@ -9,6 +9,7 @@ import ChapterSidebar from "./ChapterSidebar";
 import StoryViewer from "./StoryViewer";
 import ContinueStoryButton from "./ContinueStoryButton";
 import CharacterNetwork from "../CharacterNetwork";
+import StoryCoverGenerator from "../cover-generator/StoryCoverGenerator";
 import StoryChecklist from "../checklist/StoryChecklist";
 
 import {
@@ -237,6 +238,13 @@ const StoryWorkspace = () => {
       }
     />
   </div>
+
+  <StoryCoverGenerator
+  title={currentStory.title}
+  genre="Fantasy"
+  theme="Adventure"
+  characters={["Hero", "Villain"]}
+/>
 
   <StoryViewer
     chapters={currentStory.chapters}
