@@ -65,7 +65,7 @@ const FooterComponent: React.FC = () => {
   const resourceLinks = [
     { label: "Blog", to: "/blog" },
     { label: "Help Center", to: "/help-center" },
-    { label: "Community", to: "/dashboard/community" },
+    { label: "Community", to: "/community" },
     { label: "Contributors", to: "/contributors" },
     { label: "Support / Feedback", to: "/contact-us" },
     { label: "GitHub Issues", to: githubIssuesUrl },
