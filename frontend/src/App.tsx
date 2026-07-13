@@ -11,9 +11,9 @@ import HeroSectionComponent from "./components/hero/hero_section.component";
 import HomeComponent from "./components/home/home.component";
 import ScrollToTop from "./components/ScrollToTop";
 import ScrollToTopButton from "./components/ScrollToTopButton";
-import PageTitleUpdater from "./components/PageTitleUpdater";
 import MagicCursorComponent from "./components/magic-cursor/magic_cursor.component";
 import ThemeSwitcher from "./components/theme-switcher/ThemeSwitcher";
+import ErrorBoundary from "./components/ErrorBoundary";
 import HeroSectionComponent from "./components/hero/hero_section.component";
 import HomeComponent from "./components/home/home.component";
 
@@ -162,7 +162,7 @@ const router = createBrowserRouter([
           { path: "resources/:resourceName", element: <ResourceDetailComponent /> },
           { path: "stories", element: <StoriesComponent /> },
           { path: "branching-story", element: <BranchingStory /> },
-          { path: "story-workspace", element: <StoryWorkspace /> },
+          { path: "story-workspace", element: <ErrorBoundary><StoryWorkspace /></ErrorBoundary> },
           { path: "reading-statistics", element: <ReadingStatistics /> },
         ],
       },
@@ -235,7 +235,7 @@ const router = createBrowserRouter([
               { path: "bookmarks", element: lazyPage(<BookmarksComponent />) },
               { path: "stories", element: lazyPage(<StoriesComponent />) },
               { path: "branching-story", element: lazyPage(<BranchingStory />) },
-              { path: "story-workspace", element: lazyPage(<StoryWorkspace />) },
+              { path: "story-workspace", element: lazyPage(<ErrorBoundary><StoryWorkspace /></ErrorBoundary>) },
             ],
           },
           { path: "*", element: <NotFoundComponent /> },

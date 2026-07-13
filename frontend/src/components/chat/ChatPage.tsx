@@ -44,7 +44,15 @@ const ChatPage: React.FC = () => {
 
   // Persist chat history
   useEffect(() => {
-    localStorage.setItem("sparky_chat_history", JSON.stringify(messages));
+    try {
+      localStorage.setItem("sparky_chat_history", JSON.stringify(messages));
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "QuotaExceededError") {
+        toast.error("Chat history could not be saved because storage is full.");
+      } else {
+        console.warn("Failed to persist chat history:", e);
+      }
+    }
     scrollToBottom();
   }, [messages]);
 
@@ -109,7 +117,11 @@ const ChatPage: React.FC = () => {
   const confirmClear = () => {
     setMessages([]);
     setIsConfirmingClear(false);
-    localStorage.removeItem("sparky_chat_history");
+    try {
+      localStorage.removeItem("sparky_chat_history");
+    } catch (e) {
+      console.warn("Failed to clear chat history from storage:", e);
+    }
     toast.success("Conversation cleared");
   };
 

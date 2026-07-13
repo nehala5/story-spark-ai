@@ -866,10 +866,13 @@ useEffect(() => {
     }
   };
 
-  document.addEventListener("mousedown", handleClickOutside);
-  document.addEventListener("keydown", handleKeyDown);
   useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
     return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
@@ -969,12 +972,6 @@ useEffect(() => {
 
     return () => clearTimeout(timer);
   }, [selectedStory, selectedStory?.content, isLogin, selectTopics, createPost]);
-
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-    document.removeEventListener("keydown", handleKeyDown);
-  };
-}, []);
 
 useEffect(() => {
   if (location.state && location.state.prompt) {
