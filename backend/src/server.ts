@@ -39,6 +39,12 @@ async function main() {
 
     try {
       if (mongoose && mongoose.connection && mongoose.connection.readyState !== 0) {
+        await new Promise<void>((resolve, reject) => {
+        httpServer.close((err) => {
+        if (err) reject(err);
+        else resolve();
+  });
+});
         await mongoose.connection.close();
         logger.info('🔌 MongoDB connection safely closed.');
       }
@@ -55,6 +61,13 @@ async function main() {
   });
 
   // Intercept unexpected application crashes before they tear down the system
+  process.on("unhandledRejection", (reason) => {
+  void handleGracefulShutdown("Unhandled Rejection", reason);
+  });
+
+  process.on("uncaughtException", (error) => {
+  void handleGracefulShutdown("Uncaught Exception", error);
+  });
   process.on('uncaughtException', (error: Error) => {
     handleGracefulShutdown('Uncaught Exception', error);
   });
