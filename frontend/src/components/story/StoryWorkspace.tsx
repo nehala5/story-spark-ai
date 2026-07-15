@@ -9,6 +9,7 @@ import ChapterSidebar from "./ChapterSidebar";
 import StoryViewer from "./StoryViewer";
 import ContinueStoryButton from "./ContinueStoryButton";
 import CharacterNetwork from "../CharacterNetwork";
+import PacingAnalyzer from "../pacing/PacingAnalyzer";
 
 import {
   getSafeFileName,
@@ -210,6 +211,13 @@ const StoryWorkspace = () => {
               chapters={currentStory.chapters}
               storyId={currentStory.id}
             />
+            <PacingAnalyzer
+  story={
+    currentStory.chapters
+      ?.map((chapter) => chapter.content)
+      .join("\n\n") || ""
+  }
+/>
 
             <div className="p-6 border-t border-zinc-800">
               <ContinueStoryButton />
