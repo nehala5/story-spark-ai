@@ -23,6 +23,7 @@ import RelationshipGraph from "../relationship/RelationshipGraph";
 import GenreWeightControls from "../genre/GenreWeightControls";
 import StoryStylePresets from "../style/StoryStylePresets";
 import StoryPerspectiveSwitcher from "../perspective/StoryPerspectiveSwitcher";
+import StoryTonePresets from "../tone/StoryTonePresets";
 
 
 import {
@@ -332,6 +333,13 @@ const StoryWorkspace = () => {
 <StoryStylePresets />
 
 <StoryPerspectiveSwitcher
+  story={
+    currentStory.chapters
+      ?.map((chapter) => chapter.content)
+      .join("\n\n") || ""
+  }
+/>
+<StoryTonePresets
   story={
     currentStory.chapters
       ?.map((chapter) => chapter.content)
