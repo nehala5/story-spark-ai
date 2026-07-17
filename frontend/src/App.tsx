@@ -31,11 +31,6 @@ import StoriesComponent from "./components/stories/stories.component";
 import ChatPage from "./components/chat/ChatPage";
 import ReadingStatistics from "./pages/ReadingStatistics";
 
-type ProtectedRouteProps = {
-  allowedRoles: string[];
-  element?: React.ReactElement;
-};
-
 // Lazy-loaded page components
 const TemplatesComponent = lazy(() => import("./components/templates/templates.component"));
 const WritingAssistantComponent = lazy(() => import("./components/writing-assistant/writing_assistant.component"));
