@@ -262,7 +262,7 @@ const SignUpComponent = () => {
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="flex w-full max-w-md flex-col justify-center py-6 relative z-10 px-2 sm:px-0 min-w-0 box-border mx-auto overflow-hidden">
+      <div className="flex w-full max-w-md flex-col justify-center py-6 relative z-10 px-2 sm:px-0 min-w-0 box-border mx-auto overflow-x-hidden max-w-full">
 
         {/* Title */}
         <div className="mb-6 text-center">
@@ -483,7 +483,6 @@ const SignUpComponent = () => {
                     </span>
                   </div>
                 </div>
-
                 <div className="flex justify-center w-full box-border">
                   <div className="w-full max-w-full overflow-hidden">
                     <GoogleLogin
