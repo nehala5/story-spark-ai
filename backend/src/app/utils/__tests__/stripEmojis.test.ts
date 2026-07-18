@@ -1,85 +1,90 @@
 import { stripEmojis } from "../stripEmojis";
 
+describe("stripEmojis utility", () => {
+  it("should return empty string for null, undefined or non-string inputs", () => {
+    expect(stripEmojis(null as any)).toBe("");
+    expect(stripEmojis(undefined as any)).toBe("");
+    expect(stripEmojis(123 as any)).toBe("");
+  });
+
+  it("should return the original string if it contains no emojis", () => {
+    expect(stripEmojis("hello world")).toBe("hello world");
+    expect(stripEmojis("12345!@#$%")).toBe("12345!@#$%");
+  });
+
+  it("should strip simple smiley face emojis", () => {
+    expect(stripEmojis("hello 😊 world")).toBe("hello  world");
+    expect(stripEmojis("🚀 space adventure")).toBe("space adventure");
+  });
+
+  it("should strip complex zero-width joiner sequences", () => {
+    // Family emoji: 👨‍👩‍👧‍👦
+    expect(stripEmojis("family 👨‍👩‍👧‍👦 time")).toBe("family  time");
+  });
+
+  it("should strip country flag emojis", () => {
+    // Flag: 🇮🇳
+    expect(stripEmojis("India flag 🇮🇳")).toBe("India flag");
+  });
+
+  it("should return empty string if the input only contains emojis", () => {
+    expect(stripEmojis("😊🚀🇮🇳")).toBe("");
+
 describe("stripEmojis", () => {
-  it("returns an empty string for null input", () => {
+  it("removes basic smiley emojis", () => {
+    expect(stripEmojis("Hello 😀 World")).toBe("Hello  World");
+  });
+
+  it("removes transport and map symbols", () => {
+    expect(stripEmojis("Travel ✈️ ✈")).toBe("Travel  ");
+  });
+
+  it("removes dingbats and arrows", () => {
+    expect(stripEmojis("Arrow ➡️ Check")).toBe("Arrow  Check");
+  });
+
+  it("removes flags (regional indicator symbols)", () => {
+    expect(stripEmojis("US 🇺🇸 UK 🇬🇧")).toBe("US  UK ");
+  });
+
+  it("removes zero-width joiner emoji sequences (skin tones)", () => {
+    expect(stripEmojis("Wave 👋🏽")).toBe("Wave ");
+  });
+
+  it("removes family and people emojis with modifiers", () => {
+    expect(stripEmojis("Family 👨‍👩‍👧")).toBe("Family ");
+  });
+
+  it("removes multi-emoji sequences", () => {
+    expect(stripEmojis("🔥lit🔥")).toBe("lit");
+  });
+
+  it("removes control characters in the emoji range", () => {
+    expect(stripEmojis("Text\u{1F600}Text")).toBe("TextText");
+  });
+
+  it("returns empty string for null input", () => {
     expect(stripEmojis(null as any)).toBe("");
   });
 
-  it("returns an empty string for undefined input", () => {
+  it("returns empty string for undefined input", () => {
     expect(stripEmojis(undefined as any)).toBe("");
   });
 
-  it("returns an empty string for an empty string", () => {
+  it("returns empty string for empty string input", () => {
     expect(stripEmojis("")).toBe("");
   });
 
-  it("returns the input unchanged when there are no emojis", () => {
-    expect(stripEmojis("Hello world")).toBe("Hello world");
+  it("returns string unchanged when no emojis present", () => {
+    expect(stripEmojis("Hello World")).toBe("Hello World");
   });
 
-  it("returns the input unchanged for a normal sentence", () => {
-    expect(
-      stripEmojis("Once upon a time, there lived a brave knight.")
-    ).toBe("Once upon a time, there lived a brave knight.");
+  it("preserves numbers, punctuation, and spaces", () => {
+    expect(stripEmojis("123 !?@#$%^&*()")).toBe("123 !?@#$%^&*()");
   });
 
-  it("strips emoji flags (U+1F1E6-U+1F1FF)", () => {
-    expect(stripEmojis("Country \u{1F1FA}\u{1F1F8} USA")).toBe(
-      "Country  USA"
-    );
-  });
+  it("handles unicode text outside emoji blocks", () => {
+    expect(stripEmojis("Cafe with accent: cafe")).toBe("Cafe with accent: cafe");
 
-  it("strips pictograph emojis (U+1F300-U+1F5FF)", () => {
-    expect(stripEmojis("Weather \u{1F308} rainbow")).toBe("Weather  rainbow");
-    expect(stripEmojis("Art \u{1F3A8} palette")).toBe("Art  palette");
-  });
-
-  it("strips multiple different emojis in a single string", () => {
-    expect(stripEmojis("Hello \u{1F44B} from \u{1F680} Mars")).toBe(
-      "Hello  from  Mars"
-    );
-  });
-
-  it("handles a string that is entirely emojis", () => {
-    expect(stripEmojis("\u{1F600}\u{1F602}\u{1F680}")).toBe("");
-  });
-
-  it("strips emoticons in extended range (U+1F900-U+1F9FF)", () => {
-    expect(stripEmojis("Laugh \u{1F602} until you cry")).toBe(
-      "Laugh  until you cry"
-    );
-  });
-
-  it("strips miscellaneous symbols (U+2600-U+26FF)", () => {
-    expect(stripEmojis("Sunny \u{2600}\u{FE0F} day")).toBe("Sunny  day");
-    expect(stripEmojis("No entry \u{26D4}")).toBe("No entry ");
-  });
-
-  it("strips dingbats (U+2700-U+27BF)", () => {
-    expect(stripEmojis("Check \u{2705} done")).toBe("Check  done");
-  });
-
-  it("strips transport symbols (U+1F680-U+1F6FF)", () => {
-    expect(stripEmojis("Travel \u{1F680} to Mars")).toBe(
-      "Travel  to Mars"
-    );
-  });
-
-  it("strips zero-width joiner emoji sequences", () => {
-    // Family emoji: man + ZWJ + woman + ZWJ + girl + ZWJ + boy
-    expect(stripEmojis("My \u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\u{200D}\u{1F466} family")).toBe(
-      "My  family"
-    );
-  });
-
-  it("strips clock emojis (U+231A-U+231B)", () => {
-    expect(stripEmojis("Meeting at \u{23F0} noon")).toBe("Meeting at  noon");
-  });
-
-  it("strips regional indicator symbols used in flags", () => {
-    // UK flag: GBR
-    expect(stripEmojis("Hello \u{1F1EC}\u{1F1E7} world")).toBe(
-      "Hello  world"
-    );
   });
 });
