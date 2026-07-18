@@ -66,7 +66,6 @@ const ReviewForm: React.FC = () => {
   const [rating, setRating] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
-  const [isDark, setIsDark] = useState(false);
 
   const [createReview, { isLoading }] = useCreateReviewMutation();
 
@@ -96,8 +95,7 @@ const ReviewForm: React.FC = () => {
       setFeedback("");
       setRating(0);
       setErrors({});
-    } catch (err) {
-      // keep error message generic
+    } catch {
       setErrors({ submit: "Failed to submit review. Please try again." });
       setSuccess(false);
     }
@@ -261,18 +259,21 @@ const ReviewForm: React.FC = () => {
 
               <StarRating rating={rating} setRating={setRating} />
 
-              <p className="mt-3 text-sm text-gray-400">
-                Select a rating based on your overall experience.
-              </p>
+                <StarRating rating={rating} setRating={setRating} />
 
-              {errors.rating && (
-                <p className="mt-2 flex items-center gap-1 text-sm font-medium text-red-400">
-                  <span>⚠</span>
-                  {errors.rating}
+                <p className="mt-3 text-sm text-gray-400">
+                  Select a rating based on your overall experience.
                 </p>
-              )}
-            </div>
 
+                {errors.rating && (
+                  <p className="mt-2 flex items-center gap-1 text-sm font-medium text-red-400">
+                    <span>⚠</span>
+                    {errors.rating}
+                  </p>
+                )}
+              </div>
+            </div>
+            
             <div className="mt-8 pt-2">
               <button
                 type="button"
@@ -283,7 +284,7 @@ const ReviewForm: React.FC = () => {
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg
-                      className="h-4 w-4 animate-spin"
+                      className="h-5 w-5 animate-spin"
                       viewBox="0 0 24 24"
                       fill="none"
                     >
