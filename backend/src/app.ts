@@ -77,4 +77,6 @@ app.use((req: Request, res: Response, _next: NextFunction) => {
 
 app.use(globalErrorHandler);
 
+
 export default app;
+export { defaultCorsOrigins };
