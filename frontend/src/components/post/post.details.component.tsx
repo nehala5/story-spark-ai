@@ -499,7 +499,7 @@ const PostDetailsComponent = () => {
       </span>
 
       <span className="inline-flex items-center rounded-full bg-slate-800/60 text-slate-400 border border-slate-700/50 py-1 px-3 text-xs font-semibold">
-        📖 {formatReadingStats(post.content)}
+        {formatReadingStats(post.content)}
       </span>
     </>
   )}
