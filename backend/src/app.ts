@@ -27,7 +27,7 @@ const limiter = rateLimit({
 });
 app.use(limiter as unknown as RequestHandler);
 
-const defaultCorsOrigins = [
+export const defaultCorsOrigins = [
   "http://localhost:4001",
   "http://localhost:4002",
   "https://storysparkai-five.vercel.app",
@@ -77,3 +77,4 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 app.use(globalErrorHandler);
 
 export default app;
+export { defaultCorsOrigins };
