@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
+import jsPDF from "jspdf";
 import StoriesViewComponent, { IStories } from "./stories.view.component";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getUserInfo, isLoggedIn } from "../../services/auth.service";
@@ -10,6 +11,7 @@ import {
 import toast, { Toaster } from "react-hot-toast";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { useGetProfileInfoQuery } from "../../redux/apis/user.api";
+import { useGetCharactersQuery, useSaveCharacterMutation } from "../../redux/apis/character.api";
 import { getErrorMessage } from "../../error/error.message";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
 import StoryGeneratingAnimation from "../loading/story-generating-animation.component";
@@ -30,7 +32,10 @@ const soundtrackMap: Record<string, string> = {
   "😂 Comedy": "/audio/comedy.mp3",
   "🚀 Sci-Fi": "/audio/sci-fi.mp3",
   "🔍 Mystery": "/audio/mystery.mp3",
-  "🌟 Adventure": "/audio/adventure.mp3"
+  "🌟 Adventure": "/audio/adventure.mp3",
+  "🗺️ Adventurous": "/audio/adventure.mp3",
+  "🤖 Tech / Sci-Fi": "/audio/sci-fi.mp3",
+  "💖 Romance / Love": "/audio/romance.mp3",
 };
 
 type Inputs = {
@@ -38,11 +43,10 @@ type Inputs = {
 };
 
 const MAX_PROMPT_LENGTH = 2000;
-const WARN_THRESHOLD = 0.85;
 const lengths = ["short", "medium", "long"] as const;
 
 const StoriesComponent = () => {
-const WARN_THRESHOLD = 0.8;
+const WARN_THRESHOLD = 0.85;
 const DANGER_THRESHOLD = 0.95;
 
 const LANGUAGES = [
@@ -69,6 +73,11 @@ const GENRES = [
   { value: "🧙 Fantasy", icon: "🧙", name: "Fantasy" },
   { value: "🔍 Mystery", icon: "🔍", name: "Mystery" },
   { value: "🌟 Adventure", icon: "🌟", name: "Adventure" },
+
+  // New premium genres
+  { value: "🗺️ Adventurous", icon: "🗺️", name: "Adventurous" },
+  { value: "🤖 Tech / Sci-Fi", icon: "🤖", name: "Tech / Sci-Fi" },
+  { value: "💖 Romance / Love", icon: "💖", name: "Romance / Love" },
 ] as const;
 
 
@@ -78,53 +87,88 @@ const GENRE_LABELS: Record<string, Record<GenreName, string>> = {
   English: {
     Drama: "Drama", Comedy: "Comedy", Horror: "Horror", Romance: "Romance",
     "Sci-Fi": "Sci-Fi", Fantasy: "Fantasy", Mystery: "Mystery", Adventure: "Adventure",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Spanish: {
     Drama: "Drama", Comedy: "Comedia", Horror: "Terror", Romance: "Romance",
     "Sci-Fi": "Ciencia ficcion", Fantasy: "Fantasia", Mystery: "Misterio", Adventure: "Aventura",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   French: {
     Drama: "Drame", Comedy: "Comedie", Horror: "Horreur", Romance: "Romance",
     "Sci-Fi": "Science-fiction", Fantasy: "Fantastique", Mystery: "Mystere", Adventure: "Aventure",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Portuguese: {
     Drama: "Drama", Comedy: "Comedia", Horror: "Terror", Romance: "Romance",
     "Sci-Fi": "Ficcao cientifica", Fantasy: "Fantasia", Mystery: "Misterio", Adventure: "Aventura",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Hindi: {
     Drama: "नाटक", Comedy: "à¤¹à¤¾à¤¸à¥à¤¯", Horror: "डरावनी", Romance: "à¤ªà¥à¤°à¥‡à¤®",
     "Sci-Fi": "à¤µà¤¿à¤œà¥à¤žà¤¾à¤¨ à¤•à¤¥à¤¾", Fantasy: "à¤•à¤²à¥à¤ªà¤¨à¤¾", Mystery: "à¤°à¤¹à¤¸à¥à¤¯", Adventure: "रोमांच",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   German: {
     Drama: "Drama", Comedy: "Komodie", Horror: "Horror", Romance: "Romanze",
     "Sci-Fi": "Science-Fiction", Fantasy: "Fantasy", Mystery: "Mysterie", Adventure: "Abenteuer",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Japanese: {
     Drama: "ãƒ‰ãƒ©ãƒž", Comedy: "ã‚³ãƒ¡ãƒ‡ã‚£", Horror: "ãƒ›ãƒ©ãƒ¼", Romance: "ãƒ­ãƒžãƒ³ã‚¹",
     "Sci-Fi": "SF", Fantasy: "ãƒ•ã‚¡ãƒ³ã‚¿ã‚¸ãƒ¼", Mystery: "ãƒŸã‚¹ãƒ†ãƒªãƒ¼", Adventure: "å†’é™º",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Korean: {
     Drama: "ë“œë¼ë§ˆ", Comedy: "ì½”ë¯¸ë””", Horror: "ê³µí¬", Romance: "ë¡œë§¨ìŠ¤",
     "Sci-Fi": "SF", Fantasy: "íŒíƒ€ì§€", Mystery: "ë¯¸ìŠ¤í„°ë¦¬", Adventure: "ëª¨í—˜",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Bengali: {
 
     Drama: "à¦¨à¦¾à¦Ÿà¦•", Comedy: "à¦•à§Œà¦¤à§à¦•", Horror: "à¦­à§Œà¦¤à¦¿à¦•", Romance: "à¦ªà§à¦°à§‡à¦®",
     "Sci-Fi": "à¦¬à¦¿à¦œà§à¦žà¦¾à¦¨ à¦•à¦²à§à¦ªà¦•à¦¾à¦¹à¦¿à¦¨à¦¿", Fantasy: "à¦•à¦²à§à¦ªà¦¨à¦¾", Mystery: "à¦°à¦¹à¦¸à§à¦¯", Adventure: "à¦…à¦­à¦¿à¦¯à¦¾à¦¨",
-
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Tamil: {
     Drama: "à®¨à®¾à®Ÿà®•à®®à¯", Comedy: "à®¨à®•à¯ˆà®šà¯à®šà¯à®µà¯ˆ", Horror: "à®¤à®¿à®•à®¿à®²à¯", Romance: "à®•à®¾à®¤à®²à¯",
     "Sci-Fi": "à®…à®±à®¿à®µà®¿à®¯à®²à¯ à®ªà¯à®©à¯ˆà®µà¯", Fantasy: "à®•à®±à¯à®ªà®©à¯ˆ", Mystery: "à®®à®°à¯à®®à®®à¯", Adventure: "à®šà®¾à®•à®šà®®à¯",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Telugu: {
     Drama: "à°¨à°¾à°Ÿà°•à°‚", Comedy: "à°¹à°¾à°¸à±à°¯à°‚", Horror: "à°­à°¯à°¾à°¨à°•à°‚", Romance: "à°ªà±à°°à±‡à°®",
     "Sci-Fi": "à°µà°¿à°œà±à°žà°¾à°¨ à°•à°¥", Fantasy: "à°•à°¾à°²à±à°ªà°¨à°¿à°•à°‚", Mystery: "à°°à°¹à°¸à±à°¯à°‚", Adventure: "à°¸à°¾à°¹à°¸à°‚",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
   },
   Marathi: {
 
     Drama: "नाटक", Comedy: "विनोद", Horror: "भयकथा", Romance: "à¤ªà¥à¤°à¥‡à¤®à¤•à¤¥à¤¾",
     "Sci-Fi": "à¤µà¤¿à¤œà¥à¤žà¤¾à¤¨à¤•à¤¥à¤¾", Fantasy: "à¤•à¤²à¥à¤ªà¤¨à¤¾à¤°à¤®à¥à¤¯", Mystery: "à¤°à¤¹à¤¸à¥à¤¯", Adventure: "साहस",
+    Adventurous: "Adventurous",
+    "Tech / Sci-Fi": "Tech / Sci-Fi",
+    "Romance / Love": "Romance / Love",
 
   },
 };
@@ -584,6 +628,32 @@ const [selectedGenre, setSelectedGenre] = useState<string>("");
 const [selectedLength, setSelectedLength] = useState<string>("medium");
 const [textareaValue, setTextareaValue] = useState<string>("");
 const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+const { data: rosterData } = useGetCharactersQuery(undefined, { skip: !login });
+const rosterCharacters = rosterData?.data || [];
+const [saveCharacter, { isLoading: isSavingCharacter }] = useSaveCharacterMutation();
+
+const handleSaveToRoster = async (char: ICharacter) => {
+  try {
+    await saveCharacter({
+      name: char.name,
+      role: char.role,
+      personality: char.personality
+    }).unwrap();
+    toast.success("Character saved to roster!");
+  } catch (error) {
+    toast.error("Failed to save character.");
+  }
+};
+
+const handleLoadFromRoster = (charId: string, rosterCharId: string) => {
+  const rosterChar = rosterCharacters.find((c: any) => c._id === rosterCharId);
+  if (!rosterChar) return;
+  // Use a direct DOM update or form update depending on how characters are managed,
+  // Assuming setCharacters is available globally or we simulate the change:
+  if (typeof setCharacters === 'function') {
+    setCharacters((prev: ICharacter[]) => prev.map(c => c.id === charId ? { ...c, name: rosterChar.name, role: rosterChar.role || "", personality: rosterChar.personality } : c));
+  }
+};
 const dropdownRef = useRef<HTMLDivElement>(null);
 const inputRef = useRef<HTMLTextAreaElement>(null);
 const [guestRequestCount, setGuestRequestCount] = useState<number>(() =>
@@ -618,6 +688,7 @@ useEffect(() => {
 
   const [selectedLength, setSelectedLength] = useState<string>(draft?.length || "medium");
   const [selectedTone, setSelectedTone] = useState<ToneLabel | "">(draft?.tone || "Dramatic");
+  const [selectedAudience, setSelectedAudience] = useState<string>("General Audience");
   const [textareaValue, setTextareaValue] = useState<string>(() => {
     return location.state?.prompt || draft?.prompt || "";
   });
@@ -823,10 +894,13 @@ useEffect(() => {
     }
   };
 
-  document.addEventListener("mousedown", handleClickOutside);
-  document.addEventListener("keydown", handleKeyDown);
   useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
     return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
@@ -927,12 +1001,6 @@ useEffect(() => {
     return () => clearTimeout(timer);
   }, [selectedStory, selectedStory?.content, isLogin, selectTopics, createPost]);
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-    document.removeEventListener("keydown", handleKeyDown);
-  };
-}, []);
-
 useEffect(() => {
   if (location.state && location.state.prompt) {
     setTextareaValue(location.state.prompt);
@@ -944,35 +1012,26 @@ useEffect(() => {
   setValue("prompt", textareaValue);
 }, [textareaValue, setValue]);
 
-  const onSubmit: SubmitHandler<Inputs> = async (data) => {
-    if (!login && guestRequestCount >= 3) {
-      setShowLimitModal(true);
-      return;
-    }
-
-    if (data.prompt === "") {
-      toast.error("Please enter a prompt to generate a story.");
-      return;
-    }
+const onSubmit: SubmitHandler<Inputs> = useCallback(async (data) => {
+    if (isGenerationInProgressRef.current) return;
+    
     if (getWordCount(data.prompt) < 10) {
-      toast.error(
-        "Please enter a prompt with at least 10 words to generate a story.",
-      );
+      toast.error("Please enter a prompt with at least 10 words to generate a story.");
       return;
     }
-    setLoading(true);
 
-    try {
-  const handleExportPDF = async () => {
-    if (!selectedStory) { toast.error("No story available to export."); return; }
-    if (!selectedStory.content?.trim()) {toast.error("Story content is empty. Cannot export.");return;}
-    const toastId = toast.loading("Preparing your premium PDF...");
+    setLoading(true);
+    setIsHighLatency(false);
+    isGenerationInProgressRef.current = true;
+
+    // Timeout to simulate high latency state if generation takes more than 5s
+    let latencyTimeoutId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      setIsHighLatency(true);
+    }, 5000);
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     try {
-
-
       timeoutId = setTimeout(() => {
         if (isGenerationInProgressRef.current) {
           toast.error("Story generation timed out. Please try again.");
@@ -980,46 +1039,211 @@ useEffect(() => {
         }
       }, 60000);
 
-
-
       const payload = {
-        prompt: selectedGenre
-          ? `[Genre: ${selectedGenre}] ${data.prompt}`
-          : data.prompt,
-        wordLength:
-          selectedLength === "short" ? 150
-          : selectedLength === "long" ? 500
-          : 250,
-          selectedLength === "short"
-            ? 175
-            : selectedLength === "long"
-              ? 800
-              : 450,
+        prompt: selectedGenre ? `[Genre: ${selectedGenre}] ${data.prompt}` : data.prompt,
+        wordLength: selectedLength === "short" ? 175 : selectedLength === "long" ? 800 : 450,
         language: selectedLanguage,
         tone: selectedTone || undefined,
+        targetAudience: selectedAudience,
         characters: characters.map(({ name, role, personality }) => ({ name, role, personality })),
       };
-      const res = login
-        ? await generateModel(payload).unwrap()
-        : await generateFreeModel(payload).unwrap();
+
+      const generationRequest = login ? generateModel(payload) : generateFreeModel(payload);
+      activeGenerationRef.current = generationRequest;
+      const res = await generationRequest.unwrap();
+      
       if (res) {
         toast.success(res.message);
-        setStories(res.data as IStories[]);
+        addPrompt(data.prompt);
+        setStories(getUniqueStories(res.data as IStories[]));
+        setTextareaValue("");
         setSelectedPrompt("");
         setValue("prompt", "");
-        reset();
-        if (!login) {
-          const newCount = guestRequestCount + 1;
-          setGuestRequestCount(newCount);
-          localStorage.setItem("guestRequestCount", String(newCount));
         // Clear draft after successful generation
-
-
-        localStorage.removeItem("story_spark_draft");
-
-
+        localStorage.removeItem(DRAFT_KEY);
+        setDraftStatus("");
+        reset();
+        setCharacters([]);
+        setCurrentStep(1);
         if (selectedGenre) {
           playSoundtrack(selectedGenre);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      if (message !== "Story generation was cancelled.") {
+        toast.error(message);
+      }
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (latencyTimeoutId) {
+        clearTimeout(latencyTimeoutId);
+      }
+      activeGenerationRef.current = null;
+      isGenerationInProgressRef.current = false;
+      setLoading(false);
+      setIsHighLatency(false);
+    }
+  }, [
+    login,
+    guestRequestCount,
+    selectedGenre,
+    selectedLength,
+    selectedLanguage,
+    selectedTone,
+    generateModel,
+    generateFreeModel,
+    addPrompt,
+    setValue,
+    playSoundtrack,
+    handleCancelGeneration,
+    characters,
+    reset,
+  ]);
+
+  const handleAddTopic = () => {
+    const title = newTopicTitle.trim();
+    if (!title) {
+      toast.error("Please enter a topic.");
+      return;
+    }
+
+    const normalizedTitle = title.startsWith("#") ? title : `#${title}`;
+    const topicExists = topics.some(
+      (topic) => topic.title.toLowerCase() === normalizedTitle.toLowerCase()
+    );
+
+    if (topicExists) {
+      toast.error("This topic already exists.");
+      return;
+    }
+
+    setTopics((currentTopics) => [
+      ...currentTopics,
+      {
+        title: normalizedTitle,
+        className: SELECTED_TOPIC_CLASSES,
+        color: SELECTED_TOPIC_CLASSES,
+        selected: true,
+      },
+    ]);
+    setNewTopicTitle("");
+  };
+
+  const handleRemoveTopic = (index: number) => {
+    if (topics.length <= 2) {
+      toast.error("At least 2 topics are required.");
+      return;
+    }
+
+    setTopics((currentTopics) =>
+      currentTopics.filter((_, topicIndex) => topicIndex !== index)
+    );
+  };
+
+  const handleCopyStory = async () => {
+    if (selectedStory?.content) {
+      await navigator.clipboard.writeText(selectedStory.content);
+      setIsCopied(true);
+      toast.success("Story copied!");
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!selectedStory) { toast.error("No story available to export."); return; }
+    if (!selectedStory.content?.trim()) {toast.error("Story content is empty. Cannot export.");return;}
+    const toastId = toast.loading("Preparing your premium PDF...");
+
+    try {
+      // Helper to load image assets asynchronously with a safe timeout
+      const loadImageWithTimeout = (src: string, timeoutMs: number = 3000): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          const timeout = setTimeout(() => {
+            img.src = ""; // stop loading
+            reject(new Error(`Timeout loading image: ${src}`));
+          }, timeoutMs);
+
+          img.onload = () => {
+            clearTimeout(timeout);
+            resolve(img);
+          };
+          img.onerror = (e) => {
+            clearTimeout(timeout);
+            reject(e);
+          };
+          img.src = src;
+        });
+      };
+
+      let logoImg: HTMLImageElement | null = null;
+      let storyImg: HTMLImageElement | null = null;
+
+      try {
+        logoImg = await loadImageWithTimeout(logo);
+      } catch (err) {
+        console.warn("Failed to load StorySparkAI logo for PDF", err);
+      }
+
+      if (selectedStory.imageURL) {
+        try {
+          storyImg = await loadImageWithTimeout(selectedStory.imageURL);
+        } catch (err) {
+          console.warn("Failed to load story banner image for PDF", err);
+        }
+      }
+
+      // Initialize A4 PDF document (210mm x 297mm)
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const title = selectedStory.title || "Untitled Story";
+      const content = selectedStory.content || "";
+      const tag = (selectedStory.tag || "STORY").toUpperCase();
+
+      const leftMargin = 20;
+      const rightMargin = 20;
+      const topMargin = 20;
+      const bottomMargin = 20;
+      const printableWidth = 210 - leftMargin - rightMargin; // 170 mm
+      const maxY = 297 - bottomMargin - 10; // Bottom boundary (267mm) leaving room for footer
+
+      let yCursor = topMargin;
+
+      // 1. Header (Logo & Sub-header)
+      if (logoImg) {
+        const logoHeight = 8;
+        const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
+        doc.addImage(logoImg, "PNG", leftMargin, yCursor, logoWidth, logoHeight);
+      } else {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(99, 102, 241); // Brand Indigo
+        doc.text("StorySparkAI", leftMargin, yCursor + 6);
+      }
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184); // Slate 400
+      doc.text("PREMIUM AI GENERATED STORY", 190, yCursor + 5, { align: "right" });
+
+      yCursor += 10;
+
+      // Header Divider Line
+      doc.setDrawColor(99, 102, 241); // Brand Indigo
+      doc.setLineWidth(0.5);
+      doc.line(leftMargin, yCursor, 190, yCursor);
+
+      yCursor += 8;
+
       // 2. Story Banner Image (only on Page 1)
       if (storyImg) {
         const bannerHeight = 55;
@@ -1103,40 +1327,55 @@ useEffect(() => {
         if (pIdx < paragraphs.length - 1) {
           yCursor += paragraphSpacing;
         }
-      }
-    } catch (error: unknown) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      });
+
+      // 6. Running Header and Footer generation
+      const totalPages = doc.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+
+        // Footer line
+        doc.setDrawColor(241, 245, 249);
+        doc.setLineWidth(0.25);
+        doc.line(leftMargin, 280, 190, 280);
+
+        // Footer Text
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139); // Slate 500
+        doc.text("Generated with StorySparkAI", leftMargin, 285);
+        doc.text(`Page ${i} of ${totalPages}`, 190, 285, { align: "right" });
+
+        // Header on pages 2+
+        if (i > 1) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(99, 102, 241); // Brand Indigo
+          doc.text("StorySparkAI", leftMargin, 14);
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          doc.setTextColor(148, 163, 184); // Slate 400
+          const headerTitle = title.length > 50 ? title.substring(0, 50) + "..." : title;
+          doc.text(headerTitle, 190, 14, { align: "right" });
+
+          doc.setDrawColor(241, 245, 249);
+          doc.setLineWidth(0.2);
+          doc.line(leftMargin, 17, 190, 17);
+        }
       }
 
-      activeGenerationRef.current = null;
-      isGenerationInProgressRef.current = false;
-      setLoading(false);
+      // Save PDF with sanitized name
+      const safeTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      doc.save(`storyspark_${safeTitle}.pdf`);
+      toast.dismiss(toastId);
+      toast.success("PDF generated successfully!");
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      toast.dismiss(toastId);
+      toast.error("Failed to generate PDF. Please try again.");
     }
   };
-
-const handleClearPrompt = () => {
-  setTextareaValue("");
-  setSelectedPrompt("");
-  setValue("prompt", "");
-
-  const handleCancelGeneration = (isTimeout = false) => {
-    activeGenerationRef.current?.abort();
-    activeGenerationRef.current = null;
-    isGenerationInProgressRef.current = false;
-    setLoading(false);
-    if (!isTimeout) {
-      toast("Story generation cancelled.");
-    }
-  };
-
-
-  if (inputRef.current) {
-    inputRef.current.focus();
-  }
-};
 
   const isOverLimit = textareaValue.length >= MAX_PROMPT_LENGTH;
   const isNearLimit = textareaValue.length >= MAX_PROMPT_LENGTH * WARN_THRESHOLD;
@@ -1215,14 +1454,37 @@ const handleExportMarkdown = () => {
     onOpenHelp: () => setShowHelpModal(true),
     onCloseHelp: () => setShowHelpModal(false),
     onGenerate: () => {
-      if (isGenerateDisabled) {
-        return;
-      }
+      if (isGenerateDisabled) return;
       if (inputRef.current) {
         const form = inputRef.current.closest("form");
         if (form) form.requestSubmit();
-
       }
+    },
+    onPublish: () => {
+      const btn = document.getElementById("publish-story-btn");
+      btn?.click();
+    },
+    focusPrompt: () => inputRef.current?.focus(),
+    hasStory: stories.length > 0,
+  });
+
+  const handelPublishStory = useCallback(async () => {
+    if (!isLogin) {
+      toast.error("Please login to publish the story.");
+      return;
+    }
+    if (!selectedStory) {
+      toast.error("No story available. Please generate a story first.");
+      return;
+    }
+
+    const post: IPost = {
+      ...selectedStory,
+      topic: selectTopics,
+    };
+
+    setLoading(true);
+    try {
       const result = await createPost(post).unwrap();
       if (result) {
         toast.success("Story published successfully!");
@@ -1230,12 +1492,13 @@ const handleExportMarkdown = () => {
         setSelectedStory(null);
         onPublishSuccess?.();
       }
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error) {
+      const message = getErrorMessage(error);
+      toast.error(message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [isLogin, selectedStory, selectTopics, createPost, setStories, setSelectedStory, onPublishSuccess]);
 
   const calculateReadingTime = (content: string): number => {
     const words = getWordCount(content);
@@ -1807,13 +2070,38 @@ onKeyDown={(e) => {
                             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               👤 Character #{index + 1}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveCharacter(char.id)}
-                              className="text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:underline cursor-pointer"
-                            >
-                              Remove
-                            </button>
+                            <div className="flex gap-2">
+                              {login && (
+                                <>
+                                  <select 
+                                    className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2"
+                                    onChange={(e) => {
+                                      if (e.target.value) handleLoadFromRoster(char.id, e.target.value);
+                                    }}
+                                  >
+                                    <option value="">Load from Roster...</option>
+                                    {rosterCharacters.map((rc: any) => (
+                                      <option key={rc._id} value={rc._id}>{rc.name} ({rc.role})</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveToRoster(char)}
+                                    disabled={isSavingCharacter}
+                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 cursor-pointer"
+                                  >
+                                    Save
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCharacter(char.id)}
+                                className="text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:underline cursor-pointer"
+                              >
+                                Remove
+                              </button>
+                            </div>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1838,13 +2126,38 @@ onKeyDown={(e) => {
                           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                             👤 Character #{index + 1}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveCharacter(char.id)}
-                            className="text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:underline cursor-pointer"
-                          >
-                            Remove
-                          </button>
+                          <div className="flex gap-2">
+                            {login && (
+                              <>
+                                <select 
+                                  className="text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2"
+                                  onChange={(e) => {
+                                    if (e.target.value) handleLoadFromRoster(char.id, e.target.value);
+                                  }}
+                                >
+                                  <option value="">Load from Roster...</option>
+                                  {rosterCharacters.map((rc: any) => (
+                                    <option key={rc._id} value={rc._id}>{rc.name} ({rc.role})</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveToRoster(char)}
+                                  disabled={isSavingCharacter}
+                                  className="text-xs font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 cursor-pointer"
+                                >
+                                  Save
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCharacter(char.id)}
+                              className="text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:underline cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
 
     <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -1862,6 +2175,24 @@ onKeyDown={(e) => {
           }`}
         >
           {length.charAt(0).toUpperCase() + length.slice(1)}
+        </button>
+      ))}
+    </div>
+
+    <div className="flex flex-wrap items-center gap-2 mb-3">
+      <span className="text-xs text-gray-400 mr-1">👥 Audience:</span>
+      {["Children (5-10)", "Young Adult (12-18)", "General Audience", "Professionals"].map((audience) => (
+        <button
+          key={audience}
+          type="button"
+          onClick={() => setSelectedAudience(audience)}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+            selectedAudience === audience
+              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30"
+              : "bg-white/10 text-gray-400 hover:bg-white/20 hover:text-gray-200"
+          }`}
+        >
+          {audience}
         </button>
       ))}
     </div>
