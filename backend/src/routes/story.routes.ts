@@ -15,8 +15,30 @@ import { Request, Response } from "express";
 import piiScrubberMiddleware from "../app/middleware/pii_scrubber";
 import { generateStory } from "../services/ai.service";
 import { runWithQuotaCleanup } from "../app/modules/ai_model/quota.lifecycle";
+import rateLimit from "express-rate-limit";
 
 const router = express.Router();
+
+const MAX_PROMPT_LENGTH = 2000;
+
+const validatePromptLength = (prompt: string): void => {
+  if (!prompt || typeof prompt !== "string") {
+    throw new Error("Prompt is required and must be a string.");
+  }
+  if (prompt.length > MAX_PROMPT_LENGTH) {
+    throw new Error(`Prompt must not exceed ${MAX_PROMPT_LENGTH} characters.`);
+  }
+};
+
+const generateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  keyGenerator: (req: Request & { user?: any }) => req.user?.id ?? req.ip ?? "unknown",
+  standardHeaders: true,
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({ error: "Generation limit reached. Please try again in an hour." });
+  },
+});
 
 /** STORY CONTINUATION - single */
 router.post(
@@ -42,6 +64,8 @@ router.post(
         "Quota guard missing — checkRequestLimit middleware is required"
       );
     }
+
+    validatePromptLength(prompt);
 
     const controller = new AbortController();
     req.on("close", () => controller.abort());
@@ -123,8 +147,9 @@ router.post(
     ENUM_USER_ROLE.ADMIN,
     ENUM_USER_ROLE.SUPER_ADMIN
   ),
-  storyGenerationRateLimiter,
+  generateLimiter,
   checkRequestLimit(),
+  validateRequest(AIModelValidator.aiStoryGenerate),
   catchAsync(async (req: Request, res: Response) => {
     const { prompt, provider, options } = req.body;
     const guard = res.locals.quotaRefundGuard;
@@ -134,6 +159,8 @@ router.post(
         "Quota guard missing — checkRequestLimit middleware is required"
       );
     }
+
+    validatePromptLength(prompt);
 
     const controller = new AbortController();
     req.on("close", () => controller.abort());
