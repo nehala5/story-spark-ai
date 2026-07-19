@@ -68,6 +68,7 @@ const markNotificationAsRead = async (
   if (!Types.ObjectId.isValid(notificationId)) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Invalid notification ID");
   }
+
   const userId = await resolveUserId(token);
   const notification = await Notification.findOneAndUpdate(
     { _id: notificationId, userId },
