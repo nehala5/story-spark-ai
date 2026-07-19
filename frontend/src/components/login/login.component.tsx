@@ -166,7 +166,6 @@ const LoginComponent = () => {
           </div>
         </motion.div>
 
-
                 <div className="flex justify-center w-full min-w-0 box-border">
           <div className="w-full max-w-md overflow-hidden bg-slate-50 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 sm:p-8 lg:p-10 shadow-2xl box-border overflow-hidden relative mx-auto">
             <button
