@@ -1,3 +1,6 @@
+import { ThemeToggle } from './components/ThemeToggle';
+import React, { lazy, Suspense } from "react";
+import { createBrowserRouter, Outlet, RouterProvider, Navigate } from "react-router-dom";
 import React, { lazy, Suspense, useEffect } from "react";
 import {
   createBrowserRouter,
@@ -7,7 +10,6 @@ import {
 } from "react-router-dom";
 import { USER_ROLE } from "./constants/role";
 import toast, { Toaster } from "react-hot-toast";
-
 // Core imports
 import LoadingAnimation from "./components/loading/loading.component";
 import ProtectedRoute from "./components/ProtectedRoute";
