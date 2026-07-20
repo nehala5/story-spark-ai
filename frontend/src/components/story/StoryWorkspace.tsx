@@ -30,6 +30,7 @@ import PromptLibrary from "../prompts/PromptLibrary";
 import StoryTitleRating from "../title-rating/StoryTitleRating";
 import StoryRevisionChecklist from "../revision/StoryRevisionChecklist";
 import StoryAudienceSelector from "../audience/StoryAudienceSelector";
+import StoryKeywordExtractor from "../keywords/StoryKeywordExtractor";
 
 
 import {
@@ -389,6 +390,14 @@ const StoryWorkspace = () => {
 />
 
 <StoryRevisionChecklist />
+
+<StoryKeywordExtractor
+  story={
+    currentStory.chapters
+      ?.map((chapter) => chapter.content)
+      .join("\n\n") || ""
+  }
+/>
 
   <StoryViewer
     chapters={currentStory.chapters}
