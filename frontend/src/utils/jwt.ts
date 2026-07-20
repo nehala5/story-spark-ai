@@ -93,6 +93,16 @@ export const decodedToken = (token: string): CustomJwtPayload => {
     throw new Error("Token is missing a valid numeric 'iat' claim.");
   }
 
+  // 6b. Validate nbf (not before) claim if present — RFC 7519 §4.1.5
+  if (decoded.nbf !== undefined) {
+    if (typeof decoded.nbf !== "number") {
+      throw new Error("Token 'nbf' claim must be a number.");
+    }
+    if (decoded.nbf > Math.floor(Date.now() / 1000) + CLOCK_SKEW_TOLERANCE_SECONDS) {
+      throw new Error("Token is not yet valid (nbf claim is in the future).");
+    }
+  }
+
   // 7. Validate optional name claim type if present
   if (decoded.name !== undefined && typeof decoded.name !== "string") {
     throw new Error("Token 'name' claim must be a string.");
