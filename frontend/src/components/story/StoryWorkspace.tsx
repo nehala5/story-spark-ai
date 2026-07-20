@@ -32,6 +32,7 @@ import StoryAudienceSelector from "../audience/StoryAudienceSelector";
 import StoryKeywordExtractor from "../keywords/StoryKeywordExtractor";
 import StoryFactSheet from "../fact-sheet/StoryFactSheet";
 import StorySceneNavigator from "../scene-navigator/StorySceneNavigator";
+import StoryComplexityAnalyzer from "../complexity/StoryComplexityAnalyzer";
 
 
 import {
@@ -402,6 +403,14 @@ const StoryWorkspace = () => {
 />
 
 <StorySceneNavigator
+  story={
+    currentStory.chapters
+      ?.map((chapter) => chapter.content)
+      .join("\n\n") || ""
+  }
+/>
+
+<StoryComplexityAnalyzer
   story={
     currentStory.chapters
       ?.map((chapter) => chapter.content)
