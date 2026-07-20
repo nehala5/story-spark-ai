@@ -26,6 +26,7 @@ import StoryPerspectiveSwitcher from "../perspective/StoryPerspectiveSwitcher";
 import StoryTonePresets from "../tone/StoryTonePresets";
 import StoryChapterGenerator from "../chapter-generator/StoryChapterGenerator";
 import PromptLibrary from "../prompts/PromptLibrary";
+import StoryTitleRating from "../title-rating/StoryTitleRating";
 import StoryAudienceSelector from "../audience/StoryAudienceSelector";
 
 
@@ -368,6 +369,13 @@ const StoryWorkspace = () => {
 <PromptLibrary
   onInsertPrompt={(prompt) => {
     console.log("Selected Prompt:", prompt);
+  }}
+/>
+
+<StoryTitleRating
+  title={currentStory.title}
+  onReplace={(newTitle) => {
+    console.log("Replace title:", newTitle);
   }}
 />
 
